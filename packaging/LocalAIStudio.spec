@@ -19,7 +19,7 @@ hidden = ["app.server", "app.doc_worker", "app.plugin_worker", "app.selftest_wor
           "app.network", "app.jobs", "app.memory", "app.knowledge", "app.resources", "app.turn_queue", "app.skills",
           "uvicorn.logging", "uvicorn.loops.auto", "uvicorn.protocols.http.auto",
           "uvicorn.protocols.http.h11_impl", "uvicorn.protocols.websockets.auto",
-          "uvicorn.lifespan.on", "win32crypt", "win32com.client", "pythoncom", "win32job", "win32event", "win32process", "tkinter", "tkinter.filedialog"]
+          "uvicorn.lifespan.on", "win32crypt", "win32com.client", "pythoncom", "pywintypes", "win32com.shell.shell", "win32file", "win32con", "win32clipboard", "win32job", "win32event", "win32process", "tkinter", "tkinter.filedialog"]
 for package in ("rapidocr_onnxruntime", "webview", "onnxruntime", "docx", "openpyxl", "pptx", "xlrd", "pystray", "tokenizers", "pypdfium2", "pypdfium2_raw"):
     found_data, found_binaries, found_hidden = collect_all(package)
     # Package collectors can add entire dist-info directories. Handle metadata
@@ -42,6 +42,9 @@ for distribution in locked:
     if distribution == "numpy":
         if not canonical.is_file() or hashlib.sha256(canonical.read_bytes()).hexdigest() != "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341":
             raise ValueError("仓库内NumPy公开许可证校验失败，请在有权输出明文的构建目录重新准备官方原文")
+    pdfium_license = project / "packaging/public-licenses/pypdfium2-5.14.0/CC-BY-4.0.txt"
+    if distribution == "pypdfium2" and (not pdfium_license.is_file() or hashlib.sha256(pdfium_license.read_bytes()).hexdigest() != "f1b1748301cd4274f46733c218d510929661b4990855de5fc645dacd69c4371c"):
+        raise ValueError("仓库内pypdfium2公开许可证校验失败，请重新准备官方原文")
     for directory, destination in metadata:
         if distribution == "numpy" and Path(directory).name != "numpy-2.5.4.dist-info":
             raise ValueError("请使用requirements-build.txt中的NumPy版本；升级版本时重新核对公开许可证")
@@ -51,6 +54,8 @@ for distribution in locked:
             if item.is_file() and item.name != "direct_url.json":
                 relative = item.relative_to(directory)
                 selected = canonical if distribution == "numpy" and relative.as_posix() == "licenses/LICENSE.txt" else item
+                if distribution == "pypdfium2" and relative.as_posix() == "licenses/LICENSES/CC-BY-4.0.txt":
+                    selected = pdfium_license
                 with selected.open("rb") as stream:
                     if stream.read(32).startswith(b"%TSD-Header"):
                         raise ValueError("公开依赖元数据含保护头；请在有权输出明文的目录重新安装官方依赖")
