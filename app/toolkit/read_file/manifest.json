@@ -1,0 +1,100 @@
+{
+  "id": "read_file",
+  "name": "只读文件读取",
+  "description": "只读提取完整路径的Word/Excel/PPT/TXT/MD、未知纯文本和图片OCR。默认Office COM。可分段、全文或按行；返回实际范围与下一段。当前账户可访问目录不限，结果可能发给当前模型。",
+  "permissions": [
+    "file.read"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "root_id": {
+        "type": "string"
+      },
+      "relative_path": {
+        "type": "string"
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      },
+      "max_chars": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 100000,
+        "default": 6000
+      },
+      "path": {
+        "type": "string",
+        "maxLength": 4096,
+        "description": "Windows账户可访问的完整路径；文件工具只读，但结果可能随当前模型连接发送。"
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "segment",
+          "full",
+          "lines"
+        ],
+        "default": "segment"
+      },
+      "start_line": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      },
+      "line_count": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000,
+        "default": 200
+      },
+      "refresh": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [],
+    "additionalProperties": false,
+    "anyOf": [
+      {
+        "required": [
+          "path"
+        ]
+      },
+      {
+        "required": [
+          "root_id"
+        ]
+      }
+    ]
+  },
+  "version": "1.5.0",
+  "example": {
+    "path": "C:\\合成资料\\示例.dat",
+    "mode": "segment"
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "start_directory": {
+        "type": "string",
+        "maxLength": 4096,
+        "title": "常用起始目录（可选）",
+        "description": "仅方便打开，不是白名单。可访问当前Windows账户有权读取的目录。"
+      },
+      "tool_read_mode": {
+        "type": "string",
+        "enum": [
+          "office",
+          "native"
+        ],
+        "default": "office",
+        "title": "文件读取方式",
+        "description": "office为Office COM默认；native为Python；均不修改原文件。"
+      }
+    },
+    "additionalProperties": false
+  }
+}

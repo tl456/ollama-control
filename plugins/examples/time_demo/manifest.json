@@ -1,0 +1,18 @@
+{
+  "id": "time_demo",
+  "name": "TIME 示例插件",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entrypoint": "tool.py",
+  "description": "读取当前系统时间，演示插件导入与两种工具调用模式。",
+  "parameters": {"type": "object", "properties": {}, "additionalProperties": false},
+  "permissions": ["time.read"],
+  "timeout": 10,
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "format": {"type": "string", "enum": ["iso8601", "clock"], "default": "iso8601", "title": "时间显示格式", "description": "iso8601 包含日期与时区偏移；clock 只显示时分秒。"}
+    },
+    "additionalProperties": false
+  }
+}

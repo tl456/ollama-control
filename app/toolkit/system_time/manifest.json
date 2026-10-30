@@ -1,0 +1,15 @@
+{
+  "id": "system_time",
+  "name": "系统时间 TIME",
+  "description": "读取本机当前日期、时间和时区。",
+  "permissions": [
+    "time.read"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "version": "1.5.0",
+  "example": {}
+}

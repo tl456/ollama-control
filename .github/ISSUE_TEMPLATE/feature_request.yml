@@ -1,0 +1,17 @@
+name: 功能建议
+description: 描述具体任务与期望行为
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景与当前困难
+      description: 请使用可公开的示例，不提供真实企业或个人资料。
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 期望的行为
+      description: 说明输入、输出、限制和用户如何判断是否成功。
+    validations:
+      required: true

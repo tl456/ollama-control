@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题与隐私
+    url: https://github.com/tl456/ollama-control/security/policy
+    about: 先阅读安全策略；不要公开密钥、真实资料或未修复漏洞细节。

@@ -1,0 +1,54 @@
+{
+  "id": "file_info",
+  "name": "查看文件属性",
+  "description": "读取当前账户可读路径的单个文件或目录的属性，不读取正文。",
+  "permissions": [
+    "metadata.read"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "root_id": {
+        "type": "string"
+      },
+      "relative_path": {
+        "type": "string"
+      },
+      "path": {
+        "type": "string",
+        "maxLength": 4096,
+        "description": "Windows账户可访问的完整路径；文件工具只读，但结果可能随当前模型连接发送。"
+      }
+    },
+    "required": [],
+    "additionalProperties": false,
+    "anyOf": [
+      {
+        "required": [
+          "path"
+        ]
+      },
+      {
+        "required": [
+          "root_id"
+        ]
+      }
+    ]
+  },
+  "version": "1.5.0",
+  "example": {
+    "path": "C:\\合成资料"
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "start_directory": {
+        "type": "string",
+        "maxLength": 4096,
+        "title": "常用起始目录（可选）",
+        "description": "仅方便打开，不是白名单。可访问当前Windows账户有权读取的目录。"
+      }
+    },
+    "additionalProperties": false
+  }
+}

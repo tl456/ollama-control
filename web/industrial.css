@@ -1,0 +1,35 @@
+/* Industrial graphite: readable Chinese, steel surfaces, restrained amber. */
+:root[data-theme=dark]{--bg:#10161c;--panel:#1a232c;--side:#131b22;--text:#edf2f7;--muted:#aebdca;--soft:#26333f;--line:#3b4a58;--accent:#f2ad55;--accent2:#ffc77e;--tint:#352d23;--green:#79d3b1;--danger:#ff9b9b;--radius:12px;--shadow:0 6px 20px #0002;color-scheme:dark}
+body{font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif;letter-spacing:.1px}
+.brand small{font-size:10px;letter-spacing:1px}.brand-mark{border-radius:8px}
+:root[data-theme=dark] .brand-mark,:root[data-theme=dark] .send-button,:root[data-theme=dark] .button.primary{background:var(--accent);color:#111920}
+:root[data-theme=dark] .nav-item{color:var(--muted)}:root[data-theme=dark] .nav-item.active{color:var(--accent);border-left:3px solid var(--accent)}
+.nav-item{font-size:14px}.history-row>button:first-child{font-size:13px}
+.page-heading h1{font-size:27px;letter-spacing:0}.welcome h1{font-size:32px;letter-spacing:0;font-weight:650}
+:root[data-theme=dark] .welcome-orbit{background:var(--panel);color:var(--accent);box-shadow:none;border:1px solid var(--line);border-radius:10px}
+:root[data-theme=dark] .suggestion .s-icon{background:var(--soft);color:var(--accent)}
+.suggestion{border-radius:10px}.suggestion strong{font-size:14px}.suggestion small{font-size:12px}
+.message-content{font-size:15px;line-height:1.85;overflow-wrap:anywhere}.message-content p{line-height:1.85}
+.message-label{font-size:13px}.message-actions button{font-size:12px}.message-content pre{max-width:100%;overflow:auto}
+.message-content pre code{white-space:pre;overflow-wrap:normal;font-family:Consolas,"Cascadia Code",monospace;font-size:13px}
+.composer{border-radius:12px}.composer textarea{font-size:15px}.composer-meta{font-size:11px;line-height:1.6}
+.context-notice{padding:9px 12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;background:var(--panel);font-size:12px;line-height:1.7;color:var(--muted);margin-bottom:9px;max-height:110px;overflow:auto}
+.context-event{font-size:12px;border-left:2px solid var(--accent);padding:8px 12px;margin:10px 0;color:var(--muted)}
+.context-event pre{max-height:280px;overflow:auto;white-space:pre-wrap}
+.md-table-wrap{max-width:100%;overflow-x:auto;margin:14px 0}.table-copy{position:sticky;left:0;margin-bottom:6px;font-size:11px}
+.md-table-wrap table{min-width:420px}.md-diagram{overflow:auto;max-height:650px;padding:15px;background:#17212a;border:1px solid var(--line);border-radius:8px;margin:10px 0}
+.md-diagram svg{max-width:none;min-width:100%;height:auto}.math-source[data-display=block]{display:block;max-width:100%;overflow:auto;padding:8px 0}
+.md-footnotes{font-size:12px;color:var(--muted)}
+.code-editor{min-height:240px;max-height:48vh;font:13px/1.7 Consolas,"Cascadia Code",monospace;white-space:pre;tab-size:4;resize:vertical;width:100%}
+#lab-result{max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;border:1px solid var(--line);border-radius:8px}
+#lab-history{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}#lab-files{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.python-tool-card{border-color:#95713e}.tool-toggles{flex-wrap:wrap;overflow:auto;max-height:78px}
+:root[data-theme=dark] select,:root[data-theme=dark] select option,:root[data-theme=dark] select optgroup{background:#10171f;color:#edf2f7;color-scheme:dark}
+:root[data-theme=dark] input,:root[data-theme=dark] textarea{background:#151e27;color:var(--text)}
+.settings-help{font-size:12px;line-height:1.8}.settings-section .check-label{align-items:center;flex-direction:row;line-height:1.7}
+.private-badge{font-size:11px}:root[data-theme=dark] .private-badge.cloud{color:#ffd08b;background:#392d20;border:1px solid #80613c}
+.runtime-bar{font-size:12px}.runtime-bar b{font-size:12px}.runtime-bar .speed-text{font-variant-numeric:tabular-nums}
+.modal-head{flex-shrink:0}#modal-content{min-height:0;overflow:auto;overscroll-behavior:contain}
+@media(max-width:1050px){.app-shell{grid-template-columns:215px 1fr}.topbar{padding:0 20px}.chat-toolbar{padding-left:20px;padding-right:20px}.messages{padding-left:22px;padding-right:22px}.composer-tools{flex-wrap:wrap}.attachment-hint{display:none}}
+@media(max-width:760px){.app-shell{grid-template-columns:1fr}.composer-area{padding:0 14px 14px}.welcome h1{font-size:25px}.message-content{font-size:14px}.composer-meta{font-size:10px}.page-heading h1{font-size:23px}.context-notice{max-height:100px}.tool-toggles{padding:0 16px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}

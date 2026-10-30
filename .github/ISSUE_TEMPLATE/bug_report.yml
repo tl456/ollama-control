@@ -1,0 +1,38 @@
+name: 问题反馈
+description: 使用合成资料描述可复现的问题
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请勿提交密钥、密码、Cookie、真实聊天、记忆、公司文件或未脱敏日志。安全问题请先阅读 SECURITY.md。
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本与运行方式
+      description: 例如版本号，以及源码、安装版或解压版。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 最小复现步骤
+      description: 使用可公开的合成资料；说明期待行为与实际行为。
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 必要环境信息
+      description: Windows、Python或Ollama版本，以及相关模型/设备偏好。不要粘贴私人目录或完整系统报告。
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 已脱敏的错误摘要
+      description: 仅提供与问题有关的最小片段。请先人工检查截图、路径和日志。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 公开内容检查
+      options:
+        - label: 我已检查所提供内容，移除了密钥、个人信息及无权公开的资料。
+          required: true

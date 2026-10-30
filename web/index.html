@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark"><title>本地智能工作台</title>
+  <link rel="icon" type="image/x-icon" href="/assets/app.ico">
+  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/vendor/katex.min.css"><link rel="stylesheet" href="/assets/vendor/github-dark.min.css">
+  <link rel="stylesheet" href="/assets/industrial.css">
+  <link rel="stylesheet" href="/assets/v12.css">
+  <link rel="stylesheet" href="/assets/v15.css">
+  <script src="/assets/vendor/marked.js" defer></script><script src="/assets/vendor/purify.js" defer></script>
+  <script src="/assets/vendor/katex.min.js" defer></script><script src="/assets/vendor/highlight.min.js" defer></script><script src="/assets/markdown-enhance.js" defer></script>
+  <script src="/assets/modules/tool-events.js" defer></script>
+  <script src="/assets/modules/memory-page.js" defer></script>
+  <script src="/assets/modules/resource-status.js" defer></script>
+  <script src="/assets/modules/layout.js" defer></script>
+  <script src="/assets/modules/retrieval.js" defer></script>
+  <script src="/assets/modules/downloads.js" defer></script>
+  <script src="/assets/modules/file-browser.js" defer></script>
+  <script src="/assets/modules/cloud-reasoning.js" defer></script>
+  <script src="/assets/modules/upgrade-page.js" defer></script>
+  <script src="/assets/modules/transport.js" defer></script>
+  <script src="/assets/app.js" defer></script>
+  <script src="/assets/workspace.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#chat"><span class="brand-mark">▧</span><span>本地智能<b>工作台</b><small>本机优先 · 工业深色</small></span></a>
+    <button id="new-chat" class="new-chat"><span>＋</span> 新建对话 <kbd>Ctrl K</kbd></button>
+    <nav id="nav" aria-label="主导航">
+      <button data-view="chat" class="nav-item active"><span>◌</span> 聊天空间</button>
+      <button data-view="models" class="nav-item"><span>▦</span> 模型中心</button>
+      <button data-view="tools" class="nav-item"><span>◇</span> 工具工作空间</button>
+      <button data-view="knowledge" class="nav-item"><span>▤</span> 知识库 RAG</button>
+      <button data-view="memory" class="nav-item"><span>◈</span> 长期记忆</button>
+      <button data-view="activity" class="nav-item"><span>≋</span> 任务与访问日志</button>
+      <button data-view="api" class="nav-item"><span>⌘</span> API 接入教程</button>
+      <button data-view="guide" class="nav-item"><span>▤</span> 软件教程</button>
+      <button data-view="settings" class="nav-item"><span>⚙</span> 设置</button>
+    </nav>
+    <div id="sidebar-resizer" class="sidebar-resizer" role="separator" aria-label="调整导航和最近对话空间" aria-orientation="horizontal" tabindex="0" title="上下拖动，调整最近对话空间；方向键也可调整"><span></span></div>
+    <div class="history-heading"><span>最近对话</span><button id="trash-toggle" class="icon-btn" title="切换回收站" aria-label="回收站">♲</button></div>
+    <input id="history-search" class="history-search" placeholder="搜索对话…" aria-label="搜索对话">
+    <div id="history-list" class="history-list"></div><div id="history-pagination" class="sidebar-pagination"></div>
+    <div class="sidebar-bottom"><div class="local-status"><i id="status-dot"></i><span id="status-label">正在连接本地服务</span></div><button id="theme-toggle" class="icon-btn" title="切换明暗主题" aria-label="切换主题">◐</button></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="breadcrumb"><span id="view-kicker">工作空间</span><span>/</span><b id="view-title">聊天空间</b></div><div class="top-actions"><span class="private-badge" id="privacy-badge">● 本地运行 · 数据留在本机</span><span id="connection-state" class="connection-note" role="status" hidden></span><button id="refresh" class="icon-btn" title="重新连接并刷新状态，保留当前输入" aria-label="重新连接并刷新状态">↻</button></div></header>
+    <section id="view-chat" class="view chat-view">
+      <div class="chat-toolbar"><label class="provider-picker"><span class="sr-only">服务商</span><select id="provider-select"></select></label><label><span class="sr-only">模型</span><select id="model-select"></select></label><span class="toolbar-spacer"></span><label title="上下文容量"><span class="toolbar-label">上下文</span><select id="context-select"><option value="2048">2K</option><option value="4096">4K</option><option value="8192">8K</option><option value="16384">16K</option><option value="32768">32K</option><option value="65536">64K</option><option value="131072">128K</option><option value="262144">256K</option></select></label><label title="工具调用协议"><span class="toolbar-label">工具</span><select id="mode-select"><option value="auto">自动</option><option value="native">原生工具调用</option><option value="legacy">传统 JSON</option><option value="off">关闭工具</option></select></label><button id="chat-options" class="icon-btn" title="会话设置" aria-label="会话设置">⋯</button></div>
+      <div id="model-runtime" class="runtime-bar" aria-live="polite">正在读取模型状态…</div><div id="tool-toggles" class="tool-toggles"></div><div class="beginner-guide"><span>直接输入问题；文档和图片可拖入，自动读取文字。</span><button id="beginner-help">使用帮助 ⓘ</button></div>
+      <div id="knowledge-bar" class="knowledge-bar"></div>
+      <div id="messages" class="messages"></div>
+      <button id="jump-bottom" class="jump-bottom" hidden aria-label="回到最新消息并恢复自动跟随">回到底部 ↓</button>
+      <div class="composer-area"><div id="context-notice" class="context-notice" hidden></div><div id="attachment-tray" class="attachment-tray"></div><div class="composer" id="drop-zone"><textarea id="prompt" rows="2" placeholder="输入问题，或拖入工艺说明、检验记录和图片…" aria-label="消息输入"></textarea><div class="composer-footer"><div class="composer-tools"><button id="attach-button" class="icon-btn" title="添加附件：TXT、MD、Word、Excel、PPT、图片" aria-label="添加附件">＋</button><button id="think-toggle" class="chip" title="本地模型思考开关">✧ 深度思考</button><button id="analysis-toggle" class="chip" title="少带历史，为本次资料腾出空间">单次资料分析</button><span class="attachment-hint">TXT · MD · Office · OCR</span></div><button id="send" class="send-button" title="发送消息" aria-label="发送消息">↑</button></div></div><div class="composer-meta"><span id="context-info">8K 上下文 · 附件自动提取文字</span><span id="live-speed">Enter 发送 · Shift Enter 换行</span></div></div>
+    </section>
+    <section id="view-models" class="view page-view" hidden></section>
+    <section id="view-tools" class="view page-view" hidden></section>
+    <section id="view-api" class="view page-view" hidden></section>
+    <section id="view-guide" class="view page-view" hidden></section>
+    <section id="view-settings" class="view page-view" hidden></section>
+    <section id="view-knowledge" class="view page-view" hidden></section>
+    <section id="view-memory" class="view page-view" hidden></section>
+    <section id="view-activity" class="view page-view" hidden></section>
+  </main>
+</div>
+<input id="file-input" type="file" multiple hidden>
+<input id="plugin-input" type="file" accept=".zip" hidden>
+<dialog id="modal"><div class="modal-head"><h2 id="modal-title"></h2><button id="modal-close" class="icon-btn" aria-label="关闭">×</button></div><div id="modal-content"></div></dialog>
+<div id="toast" role="status"></div>
+</body></html>

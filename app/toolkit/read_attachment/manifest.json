@@ -1,0 +1,49 @@
+{
+  "id": "read_attachment",
+  "name": "读取本对话附件",
+  "description": "只读本对话已发送附件。先 list 查编号；ZIP 用 list 查条目，再 read 精确 member。返回片段范围和下一段；全文计算可用 Python 原件副本。不会读取任意本机路径。",
+  "permissions": [
+    "conversation.attachment.read"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "list",
+          "read"
+        ],
+        "default": "list",
+        "description": "list 列附件/ZIP条目，read 读文字片段"
+      },
+      "attachment_id": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{32}$",
+        "description": "list 返回的附件 id；不传时列本对话附件"
+      },
+      "member": {
+        "type": "string",
+        "maxLength": 1024,
+        "description": "仅 ZIP 读取：清单中的精确条目名"
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0,
+        "description": "list 为条目位置，read 为字符位置；使用 next_offset 继续"
+      },
+      "max_chars": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 12000,
+        "default": 4000
+      }
+    },
+    "additionalProperties": false
+  },
+  "version": "1.5.0",
+  "example": {
+    "action": "list"
+  }
+}

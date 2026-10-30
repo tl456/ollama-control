@@ -1,0 +1,82 @@
+{
+  "id": "search_files",
+  "name": "搜索文件名",
+  "description": "在指定目录和设置的下属层级中按文件名搜索，可用 * 通配符。不搜索文件正文。",
+  "permissions": [
+    "directory.search"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "root_id": {
+        "type": "string"
+      },
+      "relative_path": {
+        "type": "string",
+        "default": "."
+      },
+      "query": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "path": {
+        "type": "string",
+        "maxLength": 4096,
+        "description": "Windows账户可访问的完整路径；文件工具只读，但结果可能随当前模型连接发送。"
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200,
+        "default": 100
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "additionalProperties": false,
+    "anyOf": [
+      {
+        "required": [
+          "path"
+        ]
+      },
+      {
+        "required": [
+          "root_id"
+        ]
+      }
+    ]
+  },
+  "version": "1.5.0",
+  "example": {
+    "path": "C:\\合成资料",
+    "query": "*.dat"
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "start_directory": {
+        "type": "string",
+        "maxLength": 4096,
+        "title": "常用起始目录（可选）",
+        "description": "仅方便打开，不是白名单。可访问当前Windows账户有权读取的目录。"
+      },
+      "search_depth": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 5,
+        "default": 1,
+        "title": "搜索下属目录深度",
+        "description": "默认1，当前目录及下一级；保留分页、5000项和耗时保护。"
+      }
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,38 @@
+# Personal settings, authentication and user content
+config/
+data/
+models/
+runtime/
+logs/
+cache/
+plugins/imported/
+# Local environments and build/distribution output
+.venv/
+venv/
+build/
+dist/
+/dist-*/
+release/
+installers/
+__pycache__/
+*.py[cod]
+*.log
+*.sqlite*
+*.db
+*.db-*
+*.tmp
+*.bak
+# Credentials and editor-local files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Local publication audit records
+.private-audit/

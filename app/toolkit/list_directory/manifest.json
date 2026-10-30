@@ -1,0 +1,59 @@
+{
+  "id": "list_directory",
+  "name": "只读目录清单",
+  "description": "只列出指定目录下的文件名、类型、大小、修改时间，不读取内容。请用path传完整路径。",
+  "permissions": [
+    "directory.list"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "root_id": {
+        "type": "string"
+      },
+      "relative_path": {
+        "type": "string",
+        "default": "."
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "path": {
+        "type": "string",
+        "maxLength": 4096,
+        "description": "Windows账户可访问的完整路径；文件工具只读，但结果可能随当前模型连接发送。"
+      }
+    },
+    "required": [],
+    "additionalProperties": false,
+    "anyOf": [
+      {
+        "required": [
+          "path"
+        ]
+      },
+      {
+        "required": [
+          "root_id"
+        ]
+      }
+    ]
+  },
+  "version": "1.5.0",
+  "example": {
+    "path": "C:\\合成资料"
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "start_directory": {
+        "type": "string",
+        "maxLength": 4096,
+        "title": "常用起始目录（可选）",
+        "description": "仅方便打开，不是白名单。可访问当前Windows账户有权读取的目录。"
+      }
+    },
+    "additionalProperties": false
+  }
+}
