@@ -61,7 +61,7 @@ Name: "{app}\plugins\imported"; Flags: uninsneveruninstall
 [Files]
 ; All provided official Ollama libraries remain in the prepared payload.
 ; Models are separate so GGUF layers can be stored without recompression.
-Source: "{#FrozenDir}\*"; DestDir: "{app}"; Excludes: "\models\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#FrozenDir}\*"; DestDir: "{app}"; Excludes: "\models\*,__pycache__\*,*.pyc,*.pyo"; Flags: ignoreversion recursesubdirs createallsubdirs
 #include AddBackslash(BuildMetadataDir) + "model-files.iss"
 
 [Icons]
