@@ -63,6 +63,8 @@ for distribution in locked:
 a = Analysis([str(project / "main.py")], pathex=[str(project)], binaries=binaries, datas=data,
              hiddenimports=hidden, hookspath=[], hooksconfig={}, runtime_hooks=[],
              excludes=["pytest", "matplotlib", "IPython", "notebook", "torch", "tensorflow"], noarchive=False)
+# Directory data collectors must not ship developer bytecode/cache paths.
+a.datas = [row for row in a.datas if "__pycache__" not in Path(row[0]).parts and Path(row[0]).suffix.lower() not in (".pyc", ".pyo")]
 pyz = PYZ(a.pure)
 gui = EXE(pyz, a.scripts, [], exclude_binaries=True, name="LocalAIStudio", debug=False,
           bootloader_ignore_signals=False, strip=False, upx=False, console=False,
