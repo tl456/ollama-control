@@ -1,0 +1,152 @@
+{
+  "id": "file_manage",
+  "version": "1.6.0",
+  "name": "文件操作器",
+  "description": "通过完整路径查看属性/目录，创建目录、复制、移动、重命名、编辑普通文本、移入回收站。编辑前自动快照，不永久删除。",
+  "permissions": [
+    "可修改文件",
+    "可移入回收站"
+  ],
+  "capabilities": [
+    "create",
+    "edit",
+    "recycle"
+  ],
+  "example": {
+    "action": "info",
+    "path": "C:/资料/说明.md"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "info",
+          "list",
+          "mkdir",
+          "copy",
+          "move",
+          "rename",
+          "edit_text",
+          "recycle"
+        ]
+      },
+      "path": {
+        "type": "string"
+      },
+      "directory": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 1000000
+      },
+      "find": {
+        "type": "string",
+        "maxLength": 100000
+      },
+      "replace": {
+        "type": "string",
+        "maxLength": 1000000
+      },
+      "count": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 100000
+      },
+      "encoding": {
+        "type": "string",
+        "enum": [
+          "utf-8",
+          "utf-8-sig",
+          "utf-16",
+          "gb18030"
+        ]
+      },
+      "page": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "mkdir"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "directory",
+            "name"
+          ]
+        },
+        "else": {
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "action": {
+              "const": "edit_text"
+            }
+          }
+        },
+        "then": {
+          "anyOf": [
+            {
+              "required": [
+                "text"
+              ]
+            },
+            {
+              "required": [
+                "find",
+                "replace"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "additionalProperties": false
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "snapshot_count": {
+        "type": "integer",
+        "title": "快照最多份数",
+        "minimum": 1,
+        "maximum": 10000,
+        "default": 100
+      },
+      "snapshot_mb": {
+        "type": "integer",
+        "title": "快照总容量 · MiB",
+        "minimum": 1,
+        "maximum": 102400,
+        "default": 2048
+      }
+    },
+    "additionalProperties": false
+  },
+  "cacheable": false
+}

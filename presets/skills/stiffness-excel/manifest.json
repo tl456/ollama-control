@@ -1,9 +1,0 @@
-{
-  "id": "stiffness-excel",
-  "name": "整理刚度 Excel 表格",
-  "version": "1.0.0",
-  "description": "自主分析 DAT 等试验资料，按来源整理刚度表格；可用附件读取与 Python 辅助解析、计算、复核和生成 Excel。",
-  "requires_tools": ["read_attachment", "python_run"],
-  "scope": "用户本次提供的资料和明确要求；不包含固定企业标准或参考答案",
-  "tutorial": "技能教程.md"
-}

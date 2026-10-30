@@ -36,6 +36,9 @@ class MemoryOperationError(ValueError):
         super().__init__(message)
         self.code = code
         self.details = details or {}
+        # Validation/size/read failures occur before publishing memory.md.
+        # A disk publication failure is deliberately left uncertain.
+        self.executed = None if code == "memory_write_failed" else False
 
 
 def token_usage(text, cfg=None):

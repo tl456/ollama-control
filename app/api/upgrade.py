@@ -35,7 +35,7 @@ def build_router(context):
         from ..service_config import WEB_PORT, GATEWAY_PORT, CHAT_PORT, EMBED_PORT
         cfg = context.settings()
         result = {"version": context.VERSION, "sampled_at": datetime.now().astimezone().isoformat(),
-                  "ports": {"web": WEB_PORT, "gateway": cfg.get("gateway_port", GATEWAY_PORT), "chat": CHAT_PORT, "embedding": EMBED_PORT},
+                  "ports": {"web": WEB_PORT, "gateway": context.network.GATEWAY.get("port", GATEWAY_PORT), "chat": CHAT_PORT, "embedding": EMBED_PORT},
                   "network": {k: cfg.get(k) for k in ("web_bind", "gateway_enabled", "gateway_bind", "gateway_require_key", "remote_full_access")},
                   "device_preferences": {k: cfg.get(k) for k in ("inference_device", "embedding_device")},
                   "hardware": await asyncio.to_thread(context.resources.hardware),

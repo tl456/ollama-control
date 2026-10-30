@@ -9,6 +9,7 @@ import argparse
 import ast
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -16,11 +17,12 @@ import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ("qwen3.5:9b", "qwen3.5:4b", "qwen3-embedding:0.6b")
 PUBLIC_DOCS = ("README.md", "LICENSE", "SECURITY.md", "PRIVACY.md", "DISCLAIMER.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md", "CONTRIBUTING.md")
-PRIVATE = frozenset(("config", "data", "logs", "cache", "plugins", ".git", ".venv", "venv"))
+PRIVATE = frozenset(("config", "data", "logs", "audit", "cache", "plugins", ".git", ".venv", "venv"))
 SLICE_BYTES = 1_900_000_000  # Below GitHub Releases' 2 GiB per-asset limit.
 NUMPY_SHA256 = "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
 
@@ -95,6 +97,91 @@ def atomic_json(path, value):
     require(not temporary.exists(), "Temporary output already exists; inspect before retrying")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def source_inputs():
+    """Select public source by the audited allowlist, including new public files.
+
+    The Git index is intentionally not used: a release can be built from an
+    exported source tree. Runtime roots and local build outputs are excluded by
+    the allowlist; protected text and obvious secrets stop the build.
+    """
+    spec = importlib.util.spec_from_file_location("release_source_audit", ROOT / "scripts/audit_public.py")
+    audit = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(audit)
+    names = [name for name in audit.source_names(ROOT) if not any(
+        part.casefold() in {"private", ".private", ".private-audit", "v16-qa"} for part in PurePosixPath(name).parts)]
+    require(all(name in names for name in ("README.md", "LICENSE", "main.py", "app/config.py")), "Required public source is missing")
+    selected = []
+    for name in names:
+        path = regular(ROOT / name, ROOT)
+        blob = path.read_bytes()
+        findings = audit.inspect_bytes(name, blob)
+        require(not findings, "Public source audit failed: " + name + (" (" + findings[0]["type"] + ")" if findings else ""))
+        selected.append((name, blob))
+    return selected
+
+
+def verify_zip(archive, entries, prefix):
+    """Read every member to EOF: ZipExtFile verifies CRC, then verify SHA-256.
+
+    Never extracts entries. Exact names and hashes reject extra/private files,
+    missing runtime libraries, path traversal and corrupted large ZIP64 members.
+    """
+    require(isinstance(entries, list) and entries, "ZIP manifest has no members")
+    expected = {}
+    for item in entries:
+        require(isinstance(item, dict), "Invalid ZIP member metadata")
+        name = item.get("file", "")
+        relative = PurePosixPath(name)
+        require(isinstance(name, str) and relative.parts and relative.as_posix() == name and
+                not relative.is_absolute() and ".." not in relative.parts and "\\" not in name and
+                ":" not in name and name.casefold() not in expected, "Invalid ZIP manifest path")
+        require(type(item.get("bytes")) is int and item["bytes"] >= 0 and re.fullmatch(r"[0-9a-f]{64}", str(item.get("sha256", ""))), "Invalid ZIP member metadata")
+        expected[name.casefold()] = item
+    archive = regular(archive, Path(archive).parent)
+    try:
+        with zipfile.ZipFile(archive, "r", allowZip64=True) as bundle:
+            members = bundle.infolist()
+            expected_names = {prefix + item["file"] for item in entries}
+            require(len(members) == len(expected_names) and {m.filename for m in members} == expected_names, "ZIP file set differs from its manifest")
+            for member in members:
+                require(not member.is_dir() and not member.flag_bits & 1 and (member.external_attr >> 16) & 0o170000 != 0o120000, "ZIP contains unsupported entries")
+                item = expected[member.filename[len(prefix):].casefold()]
+                require(member.file_size == item["bytes"], "ZIP member size differs")
+                hasher = hashlib.sha256()
+                with bundle.open(member) as stream:
+                    while block := stream.read(4 * 1024 * 1024):
+                        hasher.update(block)
+                require(hasher.hexdigest() == item["sha256"], "ZIP member digest differs: " + item["file"])
+    except (zipfile.BadZipFile, RuntimeError, EOFError) as error:
+        raise ValueError("ZIP CRC/readability verification failed") from error
+    return len(expected)
+
+
+def source_bundle(payload, records):
+    selected = source_inputs()
+    entries = [{"file": name, "bytes": len(blob), "sha256": hashlib.sha256(blob).hexdigest()} for name, blob in selected]
+    relative = "docs/release/ollama-control-" + version() + "-source.zip"
+    output = payload / relative
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.exists():
+        verify_zip(output, entries, "ollama-control/")
+    else:
+        temporary = output.with_name(output.name + ".part")
+        require(not temporary.exists(), "Partial source ZIP already exists; inspect before retrying")
+        with zipfile.ZipFile(temporary, "x", zipfile.ZIP_DEFLATED, allowZip64=True, compresslevel=6) as bundle:
+            for name, blob in selected:
+                item = zipfile.ZipInfo("ollama-control/" + name)
+                item.compress_type = zipfile.ZIP_DEFLATED
+                item.external_attr = 0o100644 << 16
+                bundle.writestr(item, blob)
+        verify_zip(temporary, entries, "ollama-control/")
+        temporary.replace(output)
+    record = {"file": relative, "bytes": output.stat().st_size, "sha256": digest(output)}
+    records.append(record)
+    return {**record, "prefix": "ollama-control/", "entries": entries, "crc_verified": True,
+            "selection": "public-source-allowlist; no runtime, models, config, data, logs, cache, audit or Git metadata"}
 
 
 def clean_payload(payload):
@@ -203,9 +290,11 @@ def prepare(args):
     top_copies += [(ROOT / "packaging/启动.bat", "启动.bat"), (ROOT / "packaging/浏览器启动.bat", "浏览器启动.bat"), (ROOT / "web/app.ico", "app.ico")]
     for source, relative in top_copies:
         copy_public(source, ROOT, payload / relative, payload, records)
+    source_archive = source_bundle(payload, records)
     metadata = {"version": version(), "prepared_at": datetime.now(timezone.utc).isoformat(), "models": list(MODELS),
                 "runtime_files": records, "model_layers": layers, "model_manifests": manifests,
                 "runtime_file_count": len(selected), "all_provided_ollama_libraries_retained": True,
+                "source_bundle": source_archive,
                 "source_paths_recorded": False, "private_data_included": False,
                 "origin_verification": "Inputs must be obtained and signature-verified from official publishers by the builder; layer SHA checks alone do not establish provenance.",
                 "installer_slice_bytes": SLICE_BYTES, "license": "MIT; bundled components retain their original licenses"}
@@ -243,7 +332,67 @@ def check(args):
     for top in ("runtime", "models"):
         actual = {p.relative_to(payload).as_posix().casefold() for p in files(payload / top)}
         require(actual == {name for name in names if name.startswith(top + "/")}, "Prepared runtime/model set changed")
+    source = manifest.get("source_bundle", {})
+    require(source.get("file") in {row["file"] for row in declared} and source.get("prefix") == "ollama-control/" and source.get("entries"), "Complete source ZIP is missing from prepared payload")
+    verify_zip(payload / source["file"], source["entries"], source["prefix"])
     return {"passed": True, "version": version(), "verified_public_files": len(declared), "model_count": len(MODELS), "installer_slice_bytes": SLICE_BYTES}
+
+
+def portable(args):
+    """Build a complete ZIP64 directory archive without recompressing models."""
+    checked = check(args)
+    payload = (args.frozen_dir or args.output_dir / "LocalAIStudio").absolute()
+    manifest = json_read(payload / "docs/release/bundle-manifest.json")
+    declared = {row["file"]: row for row in manifest["runtime_files"] + manifest["model_layers"] + manifest["model_manifests"]}
+    output = args.output_dir.absolute() / "portable"
+    output.mkdir(parents=True, exist_ok=True)
+    require(not any(output.iterdir()), "Portable output is not empty; choose a fresh output directory")
+    archive = output / ("本地智能工作台-" + version() + "-完整离线解压包.zip")
+    temporary = archive.with_name(archive.name + ".part")
+    records = []
+    with zipfile.ZipFile(temporary, "x", zipfile.ZIP_STORED, allowZip64=True) as bundle:
+        for source in files(payload):
+            name = source.relative_to(payload).as_posix()
+            before = source.stat()
+            item = zipfile.ZipInfo("LocalAIStudio/" + name)
+            item.file_size = before.st_size
+            item.external_attr = 0o100644 << 16
+            hasher = hashlib.sha256()
+            copied = 0
+            with source.open("rb") as stream, bundle.open(item, "w", force_zip64=before.st_size >= 2 * 1024**3) as target:
+                while block := stream.read(4 * 1024 * 1024):
+                    target.write(block)
+                    hasher.update(block)
+                    copied += len(block)
+            after = source.stat()
+            record = {"file": name, "bytes": copied, "sha256": hasher.hexdigest()}
+            require(copied == before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns, "Payload changed while creating portable ZIP")
+            if name in declared:
+                require(record["bytes"] == declared[name]["bytes"] and record["sha256"] == declared[name]["sha256"], "Prepared input changed during ZIP creation")
+            records.append(record)
+    verify_zip(temporary, records, "LocalAIStudio/")
+    temporary.replace(archive)
+    archive_hash = digest(archive)
+    metadata = {"version": version(), "archive": archive.name, "bytes": archive.stat().st_size, "sha256": archive_hash,
+                "prefix": "LocalAIStudio/", "format": "ZIP64", "compression": "stored", "crc_verified": True,
+                "models": list(MODELS), "all_provided_ollama_libraries_retained": True, "files": records,
+                "github_asset_note": "The complete ZIP can exceed GitHub's 2 GiB per-asset limit; use installer EXE/BIN assets there, or separately verified multipart distribution."}
+    atomic_json(output / "portable-manifest.json", metadata)
+    (output / "SHA256SUMS.txt").write_text(archive_hash + "  " + archive.name + "\n", encoding="utf-8")
+    return {"portable_built": True, "payload_check": checked, "archive": archive.name, "bytes": metadata["bytes"],
+            "sha256": archive_hash, "verified_members": len(records), "crc_verified": True}
+
+
+def portable_check(args):
+    output = args.output_dir.absolute() / "portable"
+    metadata = json_read(output / "portable-manifest.json")
+    expected_name = "本地智能工作台-" + version() + "-完整离线解压包.zip"
+    require(metadata.get("version") == version() and metadata.get("archive") == expected_name and metadata.get("models") == list(MODELS)
+            and metadata.get("prefix") == "LocalAIStudio/", "Portable metadata differs")
+    archive = regular(output / expected_name, output)
+    require(archive.stat().st_size == metadata.get("bytes") and digest(archive) == metadata.get("sha256"), "Portable ZIP size/digest differs")
+    count = verify_zip(archive, metadata.get("files", []), "LocalAIStudio/")
+    return {"passed": True, "version": version(), "verified_members": count, "crc_verified": True, "sha256": metadata["sha256"]}
 
 
 def installer(args):
@@ -269,7 +418,7 @@ def installer(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("freeze", "prepare", "check", "installer", "all"))
+    parser.add_argument("command", choices=("freeze", "prepare", "check", "installer", "portable", "portable-check", "all"))
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
     parser.add_argument("--frozen-dir", type=Path)
     parser.add_argument("--ollama-dir", type=Path)
@@ -290,6 +439,10 @@ def main():
         results.append(check(args))
     if args.command in ("installer", "all"):
         results.append(installer(args))
+    if args.command in ("portable", "all"):
+        results.append(portable(args))
+    if args.command == "portable-check":
+        results.append(portable_check(args))
     print(json.dumps({"passed": True, "results": results}, ensure_ascii=False, indent=2))
     return 0
 
@@ -297,6 +450,6 @@ def main():
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError, zipfile.BadZipFile, subprocess.CalledProcessError) as error:
         print(json.dumps({"passed": False, "error": str(error), "note": "No user data, downloads, inference or installer execution is performed."}, ensure_ascii=False), file=sys.stderr)
         raise SystemExit(1)

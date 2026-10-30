@@ -9,18 +9,22 @@
   <link rel="stylesheet" href="/assets/industrial.css">
   <link rel="stylesheet" href="/assets/v12.css">
   <link rel="stylesheet" href="/assets/v15.css">
+  <link rel="stylesheet" href="/assets/v16.css">
   <script src="/assets/vendor/marked.js" defer></script><script src="/assets/vendor/purify.js" defer></script>
   <script src="/assets/vendor/katex.min.js" defer></script><script src="/assets/vendor/highlight.min.js" defer></script><script src="/assets/markdown-enhance.js" defer></script>
   <script src="/assets/modules/tool-events.js" defer></script>
   <script src="/assets/modules/memory-page.js" defer></script>
   <script src="/assets/modules/resource-status.js" defer></script>
   <script src="/assets/modules/layout.js" defer></script>
+  <script src="/assets/modules/detail-state.js" defer></script>
   <script src="/assets/modules/retrieval.js" defer></script>
   <script src="/assets/modules/downloads.js" defer></script>
   <script src="/assets/modules/file-browser.js" defer></script>
   <script src="/assets/modules/cloud-reasoning.js" defer></script>
   <script src="/assets/modules/upgrade-page.js" defer></script>
   <script src="/assets/modules/transport.js" defer></script>
+  <script src="/assets/modules/workspace-v16.js" defer></script>
+  <script src="/assets/modules/interaction.js" defer></script>
   <script src="/assets/app.js" defer></script>
   <script src="/assets/workspace.js" defer></script>
 </head>
@@ -33,6 +37,7 @@
       <button data-view="chat" class="nav-item active"><span>◌</span> 聊天空间</button>
       <button data-view="models" class="nav-item"><span>▦</span> 模型中心</button>
       <button data-view="tools" class="nav-item"><span>◇</span> 工具工作空间</button>
+      <button data-view="skills" class="nav-item"><span>✧</span> 技能中心</button>
       <button data-view="knowledge" class="nav-item"><span>▤</span> 知识库 RAG</button>
       <button data-view="memory" class="nav-item"><span>◈</span> 长期记忆</button>
       <button data-view="activity" class="nav-item"><span>≋</span> 任务与访问日志</button>
@@ -61,6 +66,7 @@
     <section id="view-api" class="view page-view" hidden></section>
     <section id="view-guide" class="view page-view" hidden></section>
     <section id="view-settings" class="view page-view" hidden></section>
+    <section id="view-skills" class="view page-view" hidden></section>
     <section id="view-knowledge" class="view page-view" hidden></section>
     <section id="view-memory" class="view page-view" hidden></section>
     <section id="view-activity" class="view page-view" hidden></section>

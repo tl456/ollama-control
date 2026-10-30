@@ -24,6 +24,10 @@ SCHEMA = {"type": "object", "properties": {
     "output_kb": {"type": "integer", "minimum": 1, "maximum": 64, "default": 20, "title": "输出上限（KiB）", "description": "stdout/stderr 超限终止，避免无限 print 积累。"}}, "required": ["enabled", "timeout", "output_kb"], "additionalProperties": False}
 
 def config():
+    from .toolkit.common import configuration_override
+    override = configuration_override("python_run")
+    if override is not None:
+        return {"enabled": True, "timeout": 10, "output_kb": 20, **override}
     return {"enabled": True, "timeout": 10, "output_kb": 20, **read_json(ROOT / "config/tools.json", {}).get("python_run", {}), **read_json(ROOT / "config/tools/python_run.json", {})}
 
 def active_ids():

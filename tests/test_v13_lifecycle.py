@@ -87,7 +87,7 @@ class ServiceLifecycleTests(unittest.TestCase):
             main = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(main)
             with patch.dict(sys.modules, {"webview": fake}):
-                self.assertEqual(main.launch_window("auto"), "webview2")
+                self.assertEqual(main.launch_window("webview2"), "webview2")
             self.assertTrue(fake.create_window.call_args.kwargs["text_select"])
             self.assertEqual(fake.create_window.call_args.args[0], "本地智能工作台")
             self.assertEqual(Path(fake.start.call_args.kwargs["icon"]), project / "web/app.ico")

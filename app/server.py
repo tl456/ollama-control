@@ -86,7 +86,7 @@ async def security(request: Request, call_next):
     if not local_control and not network.authenticated(request):
         if request.url.path.startswith("/api/") and request.url.path not in public_auth:
             return JSONResponse({"detail": "请先登录", "code": "login_required"}, 401)
-    host_only = ("/api/settings", "/api/tools", "/api/plugins", "/api/python", "/api/service", "/api/ollama", "/api/maintenance", "/api/ui", "/api/auth/password", "/api/auth/gateway-key", "/api/access", "/api/memory", "/api/factory-reset", "/api/downloads", "/api/runtime/monitor-resume")
+    host_only = ("/api/settings", "/api/tools", "/api/plugins", "/api/python", "/api/service", "/api/ollama", "/api/maintenance", "/api/ui", "/api/auth/password", "/api/auth/gateway-key", "/api/access", "/api/memory", "/api/factory-reset", "/api/downloads", "/api/runtime/monitor-resume", "/api/audit", "/api/snapshots", "/api/office")
     owner_only = ("/api/auth/password", "/api/auth/gateway-key")
     if not request.state.local and request.url.path.startswith(owner_only):
         return JSONResponse({"detail": "授权和认证只可在宿主机设置"}, 403)
@@ -96,6 +96,8 @@ async def security(request: Request, call_next):
         return JSONResponse({"detail": "宿主机模型管理仅允许本机操作"}, 403)
     if not request.state.can_manage and request.url.path.startswith("/api/knowledge") and request.method != "GET":
         return JSONResponse({"detail": "知识库管理仅允许本机操作"}, 403)
+    if not request.state.can_manage and request.url.path.startswith("/api/skills") and request.method != "GET":
+        return JSONResponse({"detail": "技能管理需要宿主机管理权限"}, 403)
     # All UI clients use the same optional-password Cookie authentication.
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -143,8 +145,9 @@ async def bootstrap(request: Request):
     available = tools.list_tools()
     if not request.state.can_manage:
         cfg.update(roots=[], plugins=[], proxy_url="", root="共享工作空间", file_read_mode="native")
-        available = [t for t in available if t["id"] == "system_time"]
-    return {"settings": cfg, "tools": available, "version": VERSION,
+        available = [t for t in available if t["id"] in ("system_time", "ask_user")]
+    from .port_manager import status as port_status
+    return {"settings": cfg, "tools": available, "version": VERSION, "service_ports": port_status(),
             "local_access": request.state.can_manage, "can_manage": request.state.can_manage,
             "actual_local": request.state.local, "is_local": request.state.local, "auth": network.status(request)}
 
@@ -195,8 +198,26 @@ async def new_conversation():
 
 
 @app.get("/api/conversations/{ident}")
-async def get_conversation(ident: str, offset: int = 0, limit: int = 50):
-    return store.window(store.get(ident), offset, limit)
+async def get_conversation(ident: str, offset: int = 0, limit: int = 50, around: str = ""):
+    conv = store.get(ident)
+    if around:
+        messages = store.path(conv)
+        index = next((i for i, m in enumerate(messages) if m["id"] == around), None)
+        if index is None:
+            raise ValueError("该消息不在当前对话分支")
+        limit = max(1, min(100, limit))
+        offset = max(0, len(messages) - min(len(messages), index + max(1, limit // 2)))
+    result = store.window(conv, offset, limit)
+    result["message_page"]["around"] = around
+    return result
+
+
+@app.get("/api/conversations/{ident}/outline")
+async def conversation_outline(ident: str):
+    messages = store.path(store.get(ident))
+    items = [{"id": m["id"], "summary": m["content"][:120], "index": i}
+             for i, m in enumerate(messages) if m["role"] == "user"]
+    return {"items": items, "total": len(items)}
 
 
 @app.get("/api/conversations/{ident}/branches")
@@ -347,16 +368,6 @@ async def stop_chat(ident: str):
             if job.get("owner") == ident and job["status"] in ("queued", "running"):
                 python_lab.stop(owner=job["id"])
     return {"ok": True}
-
-
-@app.get("/api/skills")
-async def skill_list():
-    return skills.listing()
-
-
-@app.get("/api/skills/{ident}")
-async def skill_detail(ident: str):
-    return skills.detail(ident)
 
 
 @app.post("/api/attachments")

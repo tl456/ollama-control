@@ -95,7 +95,8 @@ def build_router(context):
             raise ValueError("请先停止聊天和下载任务")
         if body.get("confirm") != "初始化":
             raise ValueError("请输入 初始化 确认")
-        result = await asyncio.to_thread(context.lifecycle.reset_managed)
+        with context.tools.maintenance():
+            result = await asyncio.to_thread(context.lifecycle.reset_managed)
         context.turn_queue.recover()
         context.jobs.JOBS.clear()
         context.providers.DOWNLOADS.clear()

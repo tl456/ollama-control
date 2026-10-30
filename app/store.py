@@ -146,11 +146,12 @@ def window(conv, offset=0, limit=50):
     result = {k: v for k, v in conv.items() if k not in ("messages", "context_state") and not k.startswith("_")}
     display = []
     for message in messages[start:end]:
-        item = {**message}
+        item = {k: v for k, v in message.items() if k not in ("wire_messages", "request_content", "request_context")}
         if message.get("attachments"):
             item["attachments"] = [{**{k: v for k, v in a.items() if k not in ("text", "injected_text")}, "text": "", "text_chars": len(a.get("text", "")), "text_available": True} for a in message["attachments"]]
         display.append(item)
     result.update(messages=display, message_page={"total": len(messages), "offset": offset,
-                  "limit": limit, "next_offset": offset + limit if start else None},
+                  "limit": limit, "next_offset": offset + limit if start else None,
+                  "window_leaf": messages[end-1]["id"] if end > start else None},
                   context_state=conv.get("context_state", {}))
     return result

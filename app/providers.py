@@ -1,4 +1,6 @@
 from __future__ import annotations
+from contextvars import ContextVar
+import copy
 
 import asyncio
 import json
@@ -20,6 +22,31 @@ from .config import (ROOT, proxy, secret, settings, read_json, write_json,
                      REASONING_EFFORT_LEVELS, DEEPSEEK_EFFORT_LEVELS,
                      normalize_reasoning_effort, normalize_reasoning_levels)
 from .service_config import CHAT_PORT, EMBED_PORT, LOCAL_URL, EMBED_URL, GPU_QUEUE
+
+USAGE_SINK = ContextVar("model_usage_sink", default=None)
+
+
+def record_usage(usage, record=None):
+    sink = USAGE_SINK.get()
+    if sink is None or not isinstance(usage, dict):
+        return record
+    if record is None:
+        record = {}
+        sink.append(record)
+    record.update(usage)
+    return record
+
+
+def usage_totals(records):
+    def number(record, key):
+        value = record.get(key, 0)
+        return max(0, int(value)) if isinstance(value, (int, float)) else 0
+    cached = sum(number(r, "prompt_cache_hit_tokens") if "prompt_cache_hit_tokens" in r
+                 else number(r.get("prompt_tokens_details") or {}, "cached_tokens") for r in records)
+    inputs = sum(number(r, "prompt_tokens") for r in records)
+    return {"input_tokens": inputs, "output_tokens": sum(number(r, "completion_tokens") for r in records),
+            "cached_input_tokens": cached, "cache_miss_tokens": max(0, inputs - cached),
+            "model_requests": len(records), "source": "云服务返回用量合计（包括已返回用量的检索、摘要和工具决策请求）"}
 
 POOLS = {}
 POOL_USERS = {}
@@ -211,7 +238,8 @@ async def stream_model(ident, body):
             if not completed:
                 raise ValueError("Ollama 流在完成标记前结束，保留已有回答，不自动重放")
         return
-    request = {"model": body["model"], "messages": cloud_messages(body["messages"]),
+    cfg = provider(ident)
+    request = {"model": body["model"], "messages": cloud_messages(body["messages"], reasoning=cfg.get("thinking_mode") == "deepseek"),
                "stream": True, "stream_options": {"include_usage": True},
                "max_tokens": body.get("options", {}).get("num_predict", 2048)}
     for key in ("temperature", "top_p", "presence_penalty", "frequency_penalty", "seed"):
@@ -233,6 +261,7 @@ async def stream_model(ident, body):
         if effort != "off":
             request["reasoning_effort"] = effort
     async with cloud_client(ident, 600) as client:
+        usage_record = None
         async with client.stream("POST", "chat/completions", json=request) as response:
             if response.is_error:
                 # Do not include upstream request dumps / credentials in UI errors.
@@ -247,19 +276,26 @@ async def stream_model(ident, body):
                 if item.get("error"):
                     raise ValueError("云模型返回错误，请检查服务商控制台")
                 delta = (item.get("choices") or [{}])[0].get("delta", {})
+                usage_record = record_usage(item.get("usage"), usage_record)
                 yield {"message": {"content": delta.get("content") or "", "thinking": delta.get("reasoning_content") or "",
                                    "tool_calls": delta.get("tool_calls", [])}, "usage": item.get("usage"), "cloud": True}
 
 
-def cloud_messages(messages):
+def cloud_messages(messages, reasoning=False):
     result = []
     for message in messages:
-        m = {k: v for k, v in message.items() if k in ("role", "content", "tool_calls", "tool_call_id", "reasoning_content")}
-        if message.get("thinking"):
+        m = copy.deepcopy({k: v for k, v in message.items() if k in ("role", "content", "tool_calls", "tool_call_id", "reasoning_content")})
+        for call in m.get("tool_calls", []):
+            arguments = call.get("function", {}).get("arguments")
+            if isinstance(arguments, dict):
+                call["function"]["arguments"] = json.dumps(arguments, ensure_ascii=False, separators=(",", ":"))
+        if not reasoning:
+            m.pop("reasoning_content", None)
+        if reasoning and message.get("thinking"):
             m["reasoning_content"] = message["thinking"]
         if message.get("images"):
             m["content"] = [{"type": "text", "text": message["content"]}] + [
-                {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + im}} for im in message["images"]]
+                {"type": "image_url", "image_url": {"url": ("data:image/png;base64," if im.startswith("iVBOR") else "data:image/jpeg;base64,") + im}} for im in message["images"]]
         result.append(m)
     return result
 
@@ -344,14 +380,16 @@ async def decision(ident, body):
                     resources.fault("local", error)
                 raise error
             return data["message"]["content"]
-    request = {"model": body["model"], "messages": cloud_messages(body["messages"]), "stream": False,
+    request = {"model": body["model"], "messages": cloud_messages(body["messages"], reasoning=provider(ident).get("thinking_mode") == "deepseek"), "stream": False,
                "temperature": 0, "max_tokens": 512}
     # Prompt protocol works without assuming every compatible provider implements JSON mode.
     async with cloud_client(ident, 300) as client:
         response = await client.post("chat/completions", json=request)
         if response.is_error:
             raise ValueError(f"工具决策失败 HTTP {response.status_code}")
-        return response.json()["choices"][0]["message"]["content"]
+        data = response.json()
+        record_usage(data.get("usage"))
+        return data["choices"][0]["message"]["content"]
 
 
 def parse_model(text):
@@ -440,6 +478,12 @@ def launch_ollama(embedding=False, device=None):
 
 
 def _launch_ollama(embedding=False, device=None):
+    if embedding or settings().get("ollama_management", "managed") == "managed":
+        from .port_manager import ensure_role, owned_port
+        role = "embedding" if embedding else "chat"
+        ensure_role(role)
+        if owned_port(role):
+            return read_json(ROOT / "cache" / ("embedding-process.json" if embedding else "ollama-process.json"), {})
     if not embedding:
         try:
             response = httpx.get(LOCAL_URL + "/api/version", timeout=1, trust_env=False)
@@ -555,6 +599,8 @@ def start_managed_if_needed():
     cfg = settings()
     if not cfg.get("ollama_autostart", True) or cfg.get("ollama_management", "managed") != "managed":
         return {"started": False, "reason": "按设置不自动启动"}
+    from .port_manager import ensure_role
+    ensure_role("chat")
     try:
         response = httpx.get(LOCAL_URL + "/api/version", timeout=1, trust_env=False)
         response.raise_for_status()
@@ -664,6 +710,8 @@ async def first_start():
 
 
 def ensure_embedding_service(device=None):
+    from .port_manager import ensure_role
+    ensure_role("embedding")
     """One owned endpoint, switching a CPU-only server only for explicit GPU use."""
     from . import resources
     import urllib.request
@@ -680,7 +728,7 @@ def ensure_embedding_service(device=None):
                      Path(process.exe()).resolve() == Path(record["exe"]).resolve() and "serve" in process.cmdline() and
                      record.get("models") == str(ROOT / "models") and
                      Path(process.environ().get("OLLAMA_MODELS", "")).resolve() == ROOT / "models" and
-                     any(c.status == psutil.CONN_LISTEN and c.laddr.port == EMBED_PORT for c in process.net_connections(kind="inet")))
+                     process.environ().get("OLLAMA_HOST") == f"127.0.0.1:{EMBED_PORT}")
         except (KeyError, OSError, psutil.Error):
             pass
         try:

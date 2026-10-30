@@ -1,0 +1,212 @@
+{
+  "id": "office_operator",
+  "name": "Office 操作器",
+  "version": "1.6.0",
+  "timeout": 650,
+  "description": "使用本机Microsoft Office COM读取、新建、编辑Word/Excel/PPT；支持文字、表格、样式版式和插图、实际渲染预览。先inspect取得段落/表/页/形状编号，再edit。修改前自动快照。所有模型使用相同功能。 不确定动作字段时action=help、application=word/excel/powerpoint读取教程。",
+  "permissions": [
+    "file.read",
+    "file.write",
+    "office.com"
+  ],
+  "capability_labels": [
+    "可创建和修改Office文件",
+    "修改前保存快照",
+    "可生成页面预览"
+  ],
+  "cacheable": false,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "inspect",
+          "create",
+          "edit",
+          "copy",
+          "preview",
+          "fonts",
+          "help"
+        ],
+        "default": "inspect"
+      },
+      "path": {
+        "type": "string",
+        "description": "完整Office文件路径；create时为新文件"
+      },
+      "output_path": {
+        "type": "string",
+        "description": "可选另存副本完整路径，不能已存在"
+      },
+      "operations": {
+        "type": "array",
+        "maxItems": 100,
+        "items": {
+          "type": "object",
+          "properties": {
+            "op": {
+              "type": "string",
+              "description": "查看工具教程的动作名，例如insert_text、write、format、insert_picture"
+            },
+            "text": {
+              "type": "string"
+            },
+            "paragraph": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sheet": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "range": {
+              "type": "string"
+            },
+            "slide": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "shape": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "image_path": {
+              "type": "string"
+            },
+            "attachment_id": {
+              "type": "string"
+            },
+            "width": {
+              "type": "number",
+              "minimum": 1
+            },
+            "height": {
+              "type": "number",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": true
+        },
+        "description": "同一文件批量动作，字段按教程传入；尺寸单位为磅（1厘米约28.35磅）。不接受任意COM表达式或代码。"
+      },
+      "sheet": {
+        "type": [
+          "string",
+          "integer"
+        ]
+      },
+      "range": {
+        "type": "string"
+      },
+      "table": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 30
+      },
+      "page": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      },
+      "page_count": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 3
+      },
+      "preview": {
+        "type": "boolean",
+        "description": "编辑后是否生成预览"
+      },
+      "return_images": {
+        "type": "boolean",
+        "default": false,
+        "description": "把最多3页预览图返回当前模型视觉回看；云连接将发送图片"
+      },
+      "application": {
+        "type": "string",
+        "enum": [
+          "word",
+          "excel",
+          "powerpoint"
+        ],
+        "description": "help时选择操作教程"
+      },
+      "preview_mode": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "print",
+          "range"
+        ],
+        "default": "auto",
+        "description": "Excel预览：auto先打印页，失败用区域图；print仅打印页；range区域图"
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "timeout_seconds": {
+        "type": "integer",
+        "minimum": 10,
+        "maximum": 300,
+        "default": 120,
+        "title": "任务超时（秒）"
+      },
+      "preview_pages": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 3,
+        "title": "默认预览页数"
+      },
+      "preview_cache_mb": {
+        "type": "integer",
+        "minimum": 16,
+        "maximum": 4096,
+        "default": 256,
+        "title": "预览缓存上限（MiB）"
+      },
+      "preview_retention_days": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 30,
+        "default": 7,
+        "title": "预览缓存保留天数"
+      },
+      "preview_after_edit": {
+        "type": "boolean",
+        "default": true,
+        "title": "保存后生成预览"
+      }
+    },
+    "additionalProperties": false
+  },
+  "example": {
+    "action": "inspect",
+    "path": "C:\\合成资料\\示例.docx"
+  }
+}

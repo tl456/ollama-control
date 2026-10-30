@@ -1,0 +1,44 @@
+/* Industrial blue. Wide message surfaces share one responsive measure. */
+:root{--chat-measure:1440px;--accent:#76baff;--accent2:#add5ff;--tint:#eaf4ff}
+:root[data-theme=dark]{--accent:#79baff;--accent2:#b5d9ff;--tint:#1d3044}
+.chat-view{position:relative;min-height:0}
+.messages{padding:18px 54px 16px 28px;scroll-padding-top:28px}
+.message{width:100%;max-width:var(--chat-measure);margin:0 auto 26px;grid-template-columns:28px minmax(0,1fr)}
+.message>div:last-child{min-width:0}
+.composer-area{width:calc(100% - 82px);max-width:var(--chat-measure);margin-left:auto;margin-right:auto;padding-top:8px}
+.message-content{font-size:15px;line-height:1.75}
+.message-content table{display:block;max-width:100%;overflow:auto}
+.chat-toolbar{padding-top:10px;padding-bottom:8px}.chat-fold-toggle{margin-left:20px}
+.chat-fold .tool-toggles{padding-top:3px;padding-bottom:3px}
+.beginner-guide{padding-top:3px;padding-bottom:5px;font-size:11px}
+:root[data-theme=dark] .notice,:root[data-theme=dark] .context-notice,:root[data-theme=dark] .network-note{border-left-color:var(--accent);color:var(--muted)}
+.private-badge.cloud,.remote-full-notice,.context-over-declared{color:var(--accent);background:var(--tint)}
+.capability-labels{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.capability-label{font-size:11px;border:1px solid var(--accent);color:var(--accent);background:var(--tint);padding:3px 7px;border-radius:5px}
+.conversation-outline{position:absolute;right:10px;top:34%;bottom:190px;width:28px;display:flex;flex-direction:column;justify-content:flex-start;gap:2px;overflow:visible;z-index:3;pointer-events:none}
+.conversation-outline button{position:relative;min-height:4px;max-height:14px;flex:1 1 8px;width:28px;padding:2px 3px;pointer-events:auto;display:flex;align-items:center;justify-content:flex-end}
+.outline-tick{height:2px;width:10px;background:var(--muted);opacity:.55;transition:width .12s}
+.conversation-outline button:hover .outline-tick,.conversation-outline button:focus-visible .outline-tick{width:23px;background:var(--accent);opacity:1}
+.outline-preview{display:none;position:absolute;right:33px;top:50%;transform:translateY(-50%);width:300px;max-width:65vw;padding:12px 15px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow);font-size:12px;line-height:1.7;text-align:left;overflow-wrap:anywhere}
+.conversation-outline button:hover .outline-preview,.conversation-outline button:focus-visible .outline-preview{display:block}
+.located-message{outline:2px solid var(--accent);outline-offset:7px;border-radius:7px}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+.skills-grid .card h2{font-size:18px;margin-top:12px}.skills-grid .card p{line-height:1.7}
+.skills-grid .page-actions{flex-wrap:wrap}.skill-help{margin-top:18px;line-height:1.8}
+#modal-content #skill-instructions{min-height:300px}
+.document-preview-toolbar,.office-preview-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.document-preview-toolbar>span{margin-right:auto}.document-reading{max-width:1100px;margin:auto;padding:14px}
+.office-preview-canvas{max-height:64vh;overflow:auto;background:#20252c;border:1px solid var(--line);padding:12px}
+#modal-content .office-preview-canvas img{max-width:none;max-height:none;height:auto;display:block;margin:0 auto;border-radius:0;background:white}
+.office-result-card{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.office-result-card:empty{display:none}.office-result-card label{min-width:180px}
+.font-demo{font-size:24px;padding:14px;border:1px solid var(--line);border-radius:6px}
+.wrap-path{overflow-wrap:anywhere;max-width:500px}
+.user-question{border:1px solid var(--accent);background:var(--panel);border-radius:10px;padding:10px 14px;margin-bottom:8px;max-height:30vh;overflow:auto}
+.user-question summary{color:var(--accent);cursor:pointer;font-weight:600}.question-title{white-space:pre-wrap;margin:10px 0}
+.question-options{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.question-options button{white-space:normal;text-align:left}
+.user-question textarea{min-height:52px;resize:vertical;width:100%}.user-question .page-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.user-question small{color:var(--muted)}
+.steer-current{color:var(--accent);font-size:12px}.composer-footer{flex-wrap:wrap;gap:8px}.chat-view{overflow-y:auto;overscroll-behavior:contain}
+@media(min-width:1500px){.messages{padding-left:28px;padding-right:54px}.composer-area{max-width:var(--chat-measure)}}
+@media(max-width:900px){.messages{padding:14px 38px 10px 14px}.composer-area{width:calc(100% - 30px)}.conversation-outline{right:3px;width:24px}.chat-toolbar{padding:10px}.message{grid-template-columns:24px minmax(0,1fr)}}
+@media(max-width:650px){.skills-grid{grid-template-columns:1fr}.topbar{padding:8px 12px}.chat-fold-toggle{margin-left:8px}.composer-meta{flex-wrap:wrap}.office-preview-controls{gap:5px}}

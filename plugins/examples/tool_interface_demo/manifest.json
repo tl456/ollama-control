@@ -1,0 +1,63 @@
+{
+  "id": "tool_interface_demo",
+  "name": "工具接口测试示例",
+  "version": "1.6.0",
+  "description": "学习工具接口：回显合成文字、执行四则运算或返回可控错误。无文件写入和网络请求。",
+  "entrypoint": "tool.py",
+  "example": {"action": "calculate", "operation": "multiply", "a": 6, "b": 7},
+  "permissions": [
+    "仅处理输入数据"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "echo",
+          "calculate",
+          "fail"
+        ]
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "operation": {
+        "type": "string",
+        "enum": [
+          "add",
+          "subtract",
+          "multiply",
+          "divide"
+        ]
+      },
+      "a": {
+        "type": "number",
+        "minimum": -1000000,
+        "maximum": 1000000
+      },
+      "b": {
+        "type": "number",
+        "minimum": -1000000,
+        "maximum": 1000000
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "prefix": {
+        "type": "string",
+        "maxLength": 100,
+        "default": "示例：",
+        "title": "回显前缀"
+      }
+    },
+    "additionalProperties": false
+  }
+}

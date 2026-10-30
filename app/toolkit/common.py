@@ -4,11 +4,18 @@ import os
 import re
 import stat
 import threading
+from contextvars import ContextVar
 import jsonschema
 from ..config import ROOT, LOCK, settings, read_json, write_json
 
 READ_LOCK = threading.Lock()
 FILESYSTEM = ("list_directory", "file_info", "search_files", "read_file")
+CONFIG_OVERRIDES = ContextVar("tool_configuration_overrides", default={})
+
+
+def configuration_override(ident):
+    value = CONFIG_OVERRIDES.get().get(ident)
+    return dict(value) if value is not None else None
 
 
 def checked(path):
@@ -51,10 +58,21 @@ def tool_values(ident):
     defaults = {"start_directory": ""}
     if ident == "search_files": defaults["search_depth"] = settings().get("search_depth", 1)
     if ident == "read_file": defaults["tool_read_mode"] = settings().get("tool_read_mode", "office")
-    return {**defaults, **read_json(ROOT / "config/tools" / (ident + ".json"), {})}
+    override = configuration_override(ident)
+    return {**defaults, **(override if override is not None else read_json(ROOT / "config/tools" / (ident + ".json"), {}))}
 
 
 def configuration(ident):
+    override = configuration_override(ident)
+    if override is not None:
+        from .registry import BUILTINS
+        if ident == "python_run":
+            from ..python_lab import SCHEMA
+            schema = SCHEMA
+        else:
+            schema = next(t for t in BUILTINS if t["id"] == ident).get("settings_schema", {"type":"object", "properties":{}})
+        defaults = {key: prop["default"] for key, prop in schema.get("properties", {}).items() if "default" in prop}
+        return {"schema": schema, "values": {**defaults, **override}}
     if ident == "python_run":
         from .. import python_lab
         return {"schema": python_lab.SCHEMA, "values": python_lab.config()}
@@ -67,8 +85,9 @@ def configuration(ident):
     from .. import tools
     item = next((t for t in tools.list_tools() if t["id"] == ident), None)
     if not item: raise ValueError("工具不存在")
-    return {"schema": item.get("settings_schema", {"type": "object", "properties": {}, "additionalProperties": False}),
-            "values": read_json(ROOT / "config/tools" / (ident + ".json"), read_json(ROOT / "config/tools.json", {}).get(ident, {}))}
+    schema = item.get("settings_schema", {"type": "object", "properties": {}, "additionalProperties": False})
+    defaults = {key: prop["default"] for key, prop in schema.get("properties", {}).items() if "default" in prop}
+    return {"schema": schema, "values": {**defaults, **read_json(ROOT / "config/tools" / (ident + ".json"), {})}}
 
 
 def save_configuration(ident, values):

@@ -1,7 +1,7 @@
 ; Build with scripts/build_release.py installer after freeze and prepare.
 #define ProjectRoot AddBackslash(SourcePath) + ".."
 #ifndef AppVersion
-  #define AppVersion "1.5.1"
+  #define AppVersion "1.6.0"
 #endif
 #ifndef FrozenDir
   #define FrozenDir ProjectRoot + "\dist\LocalAIStudio"

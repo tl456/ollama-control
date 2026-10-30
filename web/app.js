@@ -224,7 +224,7 @@ function path(conv) {
   if (!conv) return [];
   const by = new Map(conv.messages.map((m) => [m.id, m]));
   const result = [];
-  let id = conv.leaf;
+  let id = conv.message_page?.window_leaf || conv.leaf;
   while (id && by.has(id)) {
     const m = by.get(id);
     result.push(m);
@@ -385,7 +385,7 @@ function renderControls() {
   $("#context-select").value = o.context;
   if(![...$('#context-select').options].some(v=>v.value===String(o.context))){const item=new Option(`${num(o.context/1024,2)}K · 自定义`,String(o.context));$('#context-select').add(item);$('#context-select').value=o.context;}
   $('#analysis-toggle').classList.toggle('active',!!o.analysis_mode);
-  for(const item of $('#context-select').options){item.disabled=!!state.modelCaps&&Number(item.value)>state.modelCaps.max_context;item.title=item.disabled?'超过当前模型声明上限':'';}
+  for(const item of $('#context-select').options){item.disabled=false;item.title=state.modelCaps&&Number(item.value)>state.modelCaps.max_context?'超过模型声明值；按本次设置尝试，实际由服务端决定':'';}
   $("#mode-select").value = o.tool_mode;
   $("#think-toggle").classList.toggle("active", !!o.think);
   $("#privacy-badge").textContent =
@@ -422,7 +422,7 @@ function showView(view) {
     api: "API 接入教程",
     settings: "设置",
     guide: "软件教程",
-    knowledge:'知识库 RAG',memory:'长期记忆',activity:'任务与访问日志',
+    skills:'技能中心',knowledge:'知识库 RAG',memory:'长期记忆',activity:'任务与访问日志',
   };
   $("#view-title").textContent = names[view];
   $("#view-kicker").textContent = view === "chat" ? "工作空间" : "本地控制台";
@@ -431,9 +431,12 @@ function showView(view) {
   if (view === "settings") renderSettings();
   if (view === "guide") renderGuide();
   window.Workbench?.view(view);
+  window.WorkbenchV16?.view(view);
   restoreScroll();
 }
 function renderMessages() {
+  window.WorkbenchDetails?.capture($("#messages"));
+  window.WorkbenchV16?.outline();
   const messages = path(state.conv);
   if (!messages.length) {
     $("#messages").innerHTML =
@@ -447,6 +450,7 @@ function renderMessages() {
       ? `<div class="flex-row" style="justify-content:center"><button class="button small" data-load-older="true">加载更早消息（已载入 ${messages.length}/${state.conv.message_page.total}）</button></div>`
       : "") + shown.map(messageHtml).join("");
   addCopyButtons($("#messages"));
+  window.WorkbenchDetails?.apply($("#messages"),state.conv.id);
   const key = "chat:" + state.conv.id;
   if (key in scrollMemory) restoreScroll();
   else $("#messages").scrollTop = $("#messages").scrollHeight;
@@ -455,19 +459,20 @@ function statsHtml(s) {
   if (!s || !Object.keys(s).length) return "";
   const cps = s.chars_per_second || 0;
   const local = s.provider === "local" || s.source === "Ollama API";
-  return `<details><summary>${s.complete ? "速度与用量" : "统计不完整"} · ${num(s.tokens_per_second)} Token/s · ${num(s.seconds)}s</summary><div class="stats-grid"><span>输出生成<b>${num(s.tokens_per_second)} Token/s</b></span><span>输入处理<b>${num(s.prompt_tokens_per_second)} Token/s</b></span><span title="精确输入 ${h(s.input_tokens??'未知')} / 输出 ${h(s.output_tokens??'未知')} Token">输入 / 输出容量<b>${fmtK(s.input_tokens)} / ${fmtK(s.output_tokens)}</b></span><span>首段 / 首个正文<b>${num(s.first_chunk)}s / ${num(s.first_text)}s</b></span><span>正文显示速度<b>${num(cps)} 字符/s</b></span><span>模型加载 / 整轮耗时<b>${num(s.load_seconds)}s / ${num(s.seconds)}s</b></span><span>相对手写参考<b>${num((cps * 60) / state.cfg.handwriting_cpm)} ×</b></span><span>相对打字参考<b>${num((cps * 60) / state.cfg.typing_cpm)} ×</b></span><span>统计来源<b>${h(s.source || "未完成")}</b></span></div><p class="field-note">${local ? "生成 Token 可能包括模型思考；字符速度仅描述正文显示节奏。" : "云端 Token/s 使用 usage 与本机计时估算，包含网络/服务端等待和思考。"}手写 ${state.cfg.handwriting_cpm}、打字 ${state.cfg.typing_cpm} 字/分钟为可修改的比较刻度，不表示人群平均值或思考速度。</p></details>`;
+  return `<details data-detail-kind="stats"><summary>${s.complete ? "速度与用量" : "统计不完整"} · ${num(s.tokens_per_second)} Token/s · ${num(s.seconds)}s</summary><div class="stats-grid"><span>输出生成<b>${num(s.tokens_per_second)} Token/s</b></span><span>输入处理<b>${num(s.prompt_tokens_per_second)} Token/s</b></span><span title="精确输入 ${h(s.input_tokens??'未知')} / 输出 ${h(s.output_tokens??'未知')} Token">输入 / 输出容量<b>${fmtK(s.input_tokens)} / ${fmtK(s.output_tokens)}</b></span><span>缓存命中 / 未命中<b>${fmtK(s.cached_input_tokens)} / ${fmtK(s.cache_miss_tokens)}</b></span><span>工具调用<b>${h(s.tool_calls??"—")} / ${h(s.tool_limit??state.cfg.max_tool_calls??50)}</b></span><span>本轮模型请求<b>${h(s.model_requests??"—")}</b></span><span>首段 / 首个正文<b>${num(s.first_chunk)}s / ${num(s.first_text)}s</b></span><span>正文显示速度<b>${num(cps)} 字符/s</b></span><span>模型加载 / 整轮耗时<b>${num(s.load_seconds)}s / ${num(s.seconds)}s</b></span><span>相对手写参考<b>${num((cps * 60) / state.cfg.handwriting_cpm)} ×</b></span><span>相对打字参考<b>${num((cps * 60) / state.cfg.typing_cpm)} ×</b></span><span>统计来源<b>${h(s.source || "未完成")}</b></span></div><p class="field-note">${local ? "生成 Token 可能包括模型思考；字符速度仅描述正文显示节奏。" : "云端 Token/s 使用 usage 与本机计时估算，包含网络/服务端等待和思考。"}手写 ${state.cfg.handwriting_cpm}、打字 ${state.cfg.typing_cpm} 字/分钟为可修改的比较刻度，不表示人群平均值或思考速度。</p></details>`;
 }
 function toolFilesHtml(event){
   return window.WorkbenchToolUI.filesHtml(event);
 }
 function baseMessageHtml(m) {
   const toolHtml = window.WorkbenchToolUI.eventsHtml(m.interactions, state.tools, modeNames);
-  return `<article class="message ${m.role === "user" ? "user" : ""} ${m.excluded ? "excluded" : ""}" data-message="${h(m.id)}"><div class="avatar ${m.role === "assistant" ? "ai" : ""}">${m.role === "user" ? "你" : "✦"}</div><div><div class="message-label">${m.role === "user" ? "你" : "工作台助手"}<small>${h(m.model || "")}${m.mode ? " · " + h(modeNames[m.mode] || m.mode) : ""}${m.excluded ? " · 已排除后续上下文" : ""}</small></div>${m.thinking ? `<details><summary>思考过程</summary><div class="thinking">${h(m.thinking)}</div></details>` : ""}<div class="message-runtime">${window.WorkbenchToolUI.runtimeHtml(m.runtime_state)}</div><div class="message-tools">${toolHtml}</div><div class="message-body"><div class="message-content">${markdown(m.content)}${state.busy && liveMessage?.id === m.id ? '<i class="cursor"></i>' : ""}</div></div>${m.error ? `<div class="error-note">${h(m.error)}</div>` : ""}<div class="message-attachments">${(m.attachments || []).map((a) => `<button class="chip" data-view-attachment="${h(a.id)}">▤ ${h(a.name)} · ${a.mode === "image" ? "原图" : a.mode === "text" ? "文字" : "图+文"}</button>`).join("")}</div>${statsHtml(m.stats)}<div class="message-actions"><button data-msg-action="copy" data-id="${m.id}">复制</button>${m.role === "user" ? `<button data-msg-action="edit" data-id="${m.id}">编辑并分支</button>` : `<button data-msg-action="regenerate" data-id="${m.id}">重新生成</button>`}<button data-msg-action="exclude" data-id="${m.id}">${m.excluded ? "恢复上下文" : "排除上下文"}</button><button data-msg-action="truncate" data-id="${m.id}">删除至此分支</button></div></div></article>`;
+  return `<article class="message ${m.role === "user" ? "user" : ""} ${m.excluded ? "excluded" : ""}" data-message="${h(m.id)}"><div class="avatar ${m.role === "assistant" ? "ai" : ""}">${m.role === "user" ? "你" : "✦"}</div><div><div class="message-label">${m.role === "user" ? "你" : "工作台助手"}<small>${h(m.model || "")}${m.mode ? " · " + h(modeNames[m.mode] || m.mode) : ""}${m.excluded ? " · 已排除后续上下文" : ""}</small></div>${m.thinking ? `<details data-detail-kind="thinking"><summary>思考过程</summary><div class="thinking">${h(m.thinking)}</div></details>` : ""}<div class="message-runtime">${window.WorkbenchToolUI.runtimeHtml(m.runtime_state)}</div><div class="message-tools">${toolHtml}</div><div class="message-body"><div class="message-content">${markdown(m.content)}${state.busy && liveMessage?.id === m.id ? '<i class="cursor"></i>' : ""}</div></div>${m.error ? `<div class="error-note">${h(m.error)}</div>` : ""}<div class="message-attachments">${(m.attachments || []).map((a) => `<button class="chip" data-view-attachment="${h(a.id)}">▤ ${h(a.name)} · ${a.mode === "image" ? "原图" : a.mode === "text" ? "文字" : "图+文"}</button>`).join("")}</div>${statsHtml(m.stats)}<div class="message-actions"><button data-msg-action="copy" data-id="${m.id}">复制</button>${m.role === "user" ? `<button data-msg-action="edit" data-id="${m.id}">编辑并分支</button>` : `<button data-msg-action="regenerate" data-id="${m.id}">重新生成</button>`}<button data-msg-action="exclude" data-id="${m.id}">${m.excluded ? "恢复上下文" : "排除上下文"}</button><button data-msg-action="truncate" data-id="${m.id}">删除至此分支</button></div></div></article>`;
 }
 function renderLive() {
-  if (!liveMessage) return;
+  if (!liveMessage || state.conv?.message_page?.around) return;
   const old = $(`[data-message="${liveMessage.id}"]`);
   if (old) {
+    window.WorkbenchDetails?.capture(old);
     const bottom = window.Workbench ? window.Workbench.following() :
       $("#messages").scrollHeight -
         $("#messages").scrollTop -
@@ -483,11 +488,12 @@ function renderLive() {
     const prefixEl=content.querySelector('[data-stream-prefix]');
     if(prefixEl.dataset.length!==String(prefix.length)){prefixEl.innerHTML=markdown(prefix);prefixEl.dataset.length=String(prefix.length);addCopyButtons(prefixEl);}
     content.querySelector('[data-stream-tail]').innerHTML=markdown(tail);
-    if(liveMessage.thinking){let thinking=old.querySelector('.thinking');if(!thinking){const details=document.createElement('details');details.innerHTML='<summary>思考过程</summary><div class="thinking"></div>';content.closest('.message-body').before(details);thinking=details.querySelector('.thinking');}thinking.textContent=liveMessage.thinking;}
+    if(liveMessage.thinking){let thinking=old.querySelector('.thinking');if(!thinking){const details=document.createElement('details');details.dataset.detailKind='thinking';details.innerHTML='<summary>思考过程</summary><div class="thinking"></div>';content.closest('.message-body').before(details);thinking=details.querySelector('.thinking');}thinking.textContent=liveMessage.thinking;}
     const runtime=old.querySelector('.message-runtime');
     if(runtime)runtime.innerHTML=window.WorkbenchToolUI.runtimeHtml(liveMessage.runtime_state);
     const events=old.querySelector('.message-tools');
     if(events)window.WorkbenchToolUI.sync(events,liveMessage.interactions,state.tools,modeNames);
+    window.WorkbenchDetails?.apply(old,state.conv?.id);
     if (bottom) $("#messages").scrollTop = $("#messages").scrollHeight;
   }
 }
@@ -578,11 +584,12 @@ function showContextReport(report){
 
 function messageHtml(message){
   let extra='';const report=message.context_report;
+  if(message.steering?.length)extra+=`<details class="context-event" data-detail-kind="steering"><summary>本轮方向调整 · ${message.steering.length} 条</summary>${message.steering.map(item=>`<p><b>${item.status==='applied'?'已应用':'等待应用'}</b> · ${h(item.content)}</p>`).join('')}</details>`;
   if(message.retrieval)extra+=window.WorkbenchRetrieval.card(message.retrieval,message.id);
-  if(report?.state?.covered_messages)extra+=`<details class="context-event"><summary>${report.state.policy==='summary'?'历史已压缩为摘要':'旧历史已截断'} · ${report.state.covered_messages} 条 · 原记录保留</summary><pre>${h(report.state.summary||'本次只带近期历史，未删除原记录。')}</pre></details>`;
+  if(report?.state?.covered_messages)extra+=`<details class="context-event" data-detail-kind="context"><summary>${report.state.policy==='summary'?'历史已压缩为摘要':'旧历史已截断'} · ${report.state.covered_messages} 条 · 原记录保留</summary><pre>${h(report.state.summary||'本次只带近期历史，未删除原记录。')}</pre></details>`;
   const refs=(message.attachments||[]).filter(a=>a.injection?.truncated);
   if(refs.length)extra+=`<div class="context-notice">${refs.map(a=>`${h(a.name)}：本次送入 ${Math.round(a.injection.ratio*100)}%，未送入部分未参与回答`).join('<br>')}</div>`;
-  if(message.attempts?.length)extra+=`<details class="context-event"><summary>故障恢复记录 · ${message.attempts.length} 次</summary>${message.attempts.map(a=>`<pre>${h(a.content||a.note)}</pre>`).join('')}</details>`;
+  if(message.attempts?.length)extra+=`<details class="context-event" data-detail-kind="recovery"><summary>故障恢复记录 · ${message.attempts.length} 次</summary>${message.attempts.map(a=>`<pre>${h(a.content||a.note)}</pre>`).join('')}</details>`;
   return baseMessageHtml(message).replace('<div class="message-body">',extra+'<div class="message-body">').replaceAll('data-view-attachment=',`data-message-ref="${h(message.id)}" data-view-attachment=`);
 }
 async function viewAttachment(id, messageId) {
@@ -874,13 +881,14 @@ function renderModels(){
 
 async function renderTools(){
   await renderBaseTools();
-  const notice=$('#view-tools .notice');if(notice)notice.textContent='目录、属性、搜索和正文工具保持只读，支持当前Windows账户可访问的完整路径，无需白名单。搜索仍分页、有深度和超时保护。Python默认可用但不预先勾选，按可信代码执行，不是安全沙箱。';
+  window.WorkbenchV16?.tools();
+  const notice=$('#view-tools .notice');if(notice)notice.textContent='工具在当前Windows账户权限下执行。只读、新建、编辑、回收站与网络能力在卡片标明；配置集中于各工具。所有模型使用统一工具和额度，执行记录可在任务栏查看。';
   for(const card of $$('#view-tools .tool-card')){
     const id=card.querySelector('[data-test-tool]')?.dataset.testTool;if(id==='python_run'){
       card.classList.add('python-tool-card');const tag=card.querySelector('.tag');tag.textContent=state.tools.find(t=>t.id===id)?.enabled?'可信执行 · 已启用':'可信执行 · 默认关闭';
     }
   }
-  const grid=$('#view-tools .tools-grid');if(grid){const cards=[...grid.querySelectorAll('.tool-card')],groups=[['基础信息',['system_time']],['文件与附件',['read_attachment','list_directory','search_files','file_info','read_file']],['计算与编程',['python_run']],['扩展插件',[]]];const used=new Set();for(const [name,ids] of groups){const matches=cards.filter(card=>{const id=card.querySelector('[data-test-tool]')?.dataset.testTool;return !used.has(card)&&(ids.length?ids.includes(id):true);});if(!matches.length)continue;const heading=document.createElement('h3');heading.className='tool-workspace-group';heading.textContent=name;grid.append(heading);for(const card of matches){grid.append(card);used.add(card);}}}
+  const grid=$('#view-tools .tools-grid');if(grid){const cards=[...grid.querySelectorAll('.tool-card')],groups=[['基础信息',['system_time']],['文件与附件',['read_attachment','list_directory','search_files','file_info','read_file','text_create','file_manage']],['Office 与网络',['office_operator','http_request']],['计算与编程',['python_run']],['扩展插件',[]]];const used=new Set();for(const [name,ids] of groups){const matches=cards.filter(card=>{const id=card.querySelector('[data-test-tool]')?.dataset.testTool;return !used.has(card)&&(ids.length?ids.includes(id):true);});if(!matches.length)continue;const heading=document.createElement('h3');heading.className='tool-workspace-group';heading.textContent=name;grid.append(heading);for(const card of matches){grid.append(card);used.add(card);}}}
 }
 
 async function pythonLabDialog(page=1){
@@ -915,7 +923,7 @@ async function modelDetail(model) {
 async function renderBaseTools() {
   state.tools = await api("/api/tools");
   $("#view-tools").innerHTML =
-    `<div class="page-heading"><div><div class="eyebrow">工具工作空间</div><h1>小工具，让对话多一点能力。</h1><p>查询时间、查找文件、读取资料；按需选择交给模型的工具。</p></div><div class="flex-row"><button id="example-plugin" class="button">下载时间工具示例</button><button id="import-plugin" class="button primary">＋ 导入工具 ZIP</button></div></div><div class="notice">内置工具均为只读，不会移动、修改或重命名文件。目录工具默认没有访问权限；先点工具卡片的“配置”，选择允许读取的文件夹。导入的 Python 插件不是权限沙箱，仅启用已核对的可信代码。</div><div class="tools-grid">${state.tools.map((t) => `<div class="card tool-card"><div class="tool-icon">${t.id.includes("time") ? "◷" : "◇"}</div><div class="flex-row" style="justify-content:space-between"><h2>${h(t.name)}</h2><span class="tag ${t.enabled ? "success" : ""}">${t.builtin ? "内置只读" : t.enabled ? "已启用" : "已导入 · 未启用"}</span></div><p>${h(t.description)}</p><div class="subtle" style="margin-top:8px">${h(t.id)} · ${h(t.version || "1.0")}<br>权限：${h((t.permissions || []).join(", "))}</div><div class="flex-row"><button class="button small" data-test-tool="${h(t.id)}">${t.id === "system_time" ? "测试" : "打开 / 测试"}</button><button class="button small" data-tool-settings="${h(t.id)}">配置</button>${!t.builtin ? `<button class="button small" data-source-tool="${h(t.id)}">查看源码</button><button class="button small ${t.enabled ? "" : "primary"}" data-enable-plugin="${h(t.id)}">${t.enabled ? "停用" : "启用"}</button><button class="button small danger" data-remove-plugin="${h(t.id)}">移除</button>` : ""}</div></div>`).join("")}</div><div class="notice">目录清单、文件属性、文件名搜索和文件读取共用允许目录。搜索默认限于当前目录及下一级；搜索深度在“搜索文件名 → 配置”中修改。Office COM / Python 读取方式在“只读文件读取 → 配置”中切换。</div>`;
+    `<div class="page-heading"><div><div class="eyebrow">工具工作空间</div><h1>小工具，让对话多一点能力。</h1><p>查询时间、查找文件、读取资料；按需选择交给模型的工具。</p></div><div class="flex-row"><button id="example-plugin" class="button">下载时间工具示例</button><button id="import-plugin" class="button primary">＋ 导入工具 ZIP</button></div></div><div class="notice">内置工具均为只读，不会移动、修改或重命名文件。目录工具默认没有访问权限；先点工具卡片的“配置”，选择允许读取的文件夹。导入的 Python 插件不是权限沙箱，仅启用已核对的可信代码。</div><div class="tools-grid">${state.tools.map((t) => `<div class="card tool-card"><div class="tool-icon">${t.id.includes("time") ? "◷" : "◇"}</div><div class="flex-row" style="justify-content:space-between"><h2>${h(t.name)}</h2><span class="tag ${t.enabled ? "success" : ""}">${t.builtin ? "内置工具" : t.enabled ? "已启用" : "已导入 · 未启用"}</span></div><p>${h(t.description)}</p><div class="subtle" style="margin-top:8px">${h(t.id)} · ${h(t.version || "1.0")}<br>权限：${h((t.permissions || []).join(", "))}</div><div class="flex-row"><button class="button small" data-test-tool="${h(t.id)}">${t.id === "system_time" ? "测试" : "打开 / 测试"}</button><button class="button small" data-tool-settings="${h(t.id)}">配置</button>${!t.builtin ? `<button class="button small" data-source-tool="${h(t.id)}">查看源码</button><button class="button small ${t.enabled ? "" : "primary"}" data-enable-plugin="${h(t.id)}">${t.enabled ? "停用" : "启用"}</button><button class="button small danger" data-remove-plugin="${h(t.id)}">移除</button>` : ""}</div></div>`).join("")}</div><div class="notice">目录清单、文件属性、文件名搜索和文件读取共用允许目录。搜索默认限于当前目录及下一级；搜索深度在“搜索文件名 → 配置”中修改。Office COM / Python 读取方式在“只读文件读取 → 配置”中切换。</div>`;
   $("#example-plugin").onclick = handle(() =>
     download("/api/example-plugin", "time_demo.zip"),
   );
@@ -933,6 +941,7 @@ async function testTool(name) {
     await directoryBrowser(name);
     return;
   }
+  if(name!=='system_time'){await window.WorkbenchV16.testTool(name);return;}
   const result=await api('/api/tools/test','POST',{name,arguments:{}});
   modal('工具测试 · '+name,`<pre>${h(JSON.stringify(result,null,2))}</pre>`);
 }
@@ -1629,7 +1638,7 @@ document.addEventListener(
       const page=await api('/api/conversations/'+state.conv.id+'?offset='+offset);
       const seen=new Set(state.conv.messages.map(m=>m.id));
       state.conv.messages=[...page.messages.filter(m=>!seen.has(m.id)),...state.conv.messages];
-      state.conv.message_page=page.message_page;
+      state.conv.message_page={...page.message_page,window_leaf:state.conv.message_page?.window_leaf||state.conv.leaf,around:state.conv.message_page?.around||null};
       state.visibleMessages[state.conv.id]=state.conv.messages.length;
       delete scrollMemory[scrollKey()];
       renderMessages();

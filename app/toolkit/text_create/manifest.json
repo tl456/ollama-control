@@ -1,0 +1,50 @@
+{
+  "id": "text_create",
+  "version": "1.6.0",
+  "name": "新建文本文件",
+  "description": "在指定完整目录创建一个TXT或MD文件。只新增，重名自动编号，不覆盖。返回最终文件路径。",
+  "permissions": [
+    "会创建文件"
+  ],
+  "capabilities": [
+    "create"
+  ],
+  "example": {
+    "directory": "C:/资料",
+    "name": "说明",
+    "format": "md",
+    "text": "# 说明\n内容"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "directory": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 150
+      },
+      "format": {
+        "type": "string",
+        "enum": [
+          "txt",
+          "md"
+        ],
+        "default": "md"
+      },
+      "text": {
+        "type": "string",
+        "maxLength": 1000000
+      }
+    },
+    "required": [
+      "directory",
+      "name",
+      "text"
+    ],
+    "additionalProperties": false
+  },
+  "cacheable": false
+}

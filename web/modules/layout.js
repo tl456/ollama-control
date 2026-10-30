@@ -4,7 +4,7 @@ window.WorkbenchLayout = (() => {
   const key = "workbench-layout-v1";
   let preferences = {zoom:100, sidebar:false, folds:{}};
   try { preferences = {...preferences, ...JSON.parse(localStorage.getItem(key)||"{}")}; } catch {}
-  const persist = () => localStorage.setItem(key, JSON.stringify(preferences));
+  const persist = () => {try {localStorage.setItem(key, JSON.stringify(preferences));} catch {}};
   function zoom(value, save=true) {
     const number=Number(value);
     preferences.zoom=Number.isFinite(number)?Math.max(50,Math.min(200,Math.round(number))):100;

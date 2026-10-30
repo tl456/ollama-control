@@ -36,3 +36,4 @@ __pycache__/
 Thumbs.db
 # Local publication audit records
 .private-audit/
+/audit/

@@ -70,3 +70,4 @@ typing-inspection==0.4.4
 uvicorn==0.54.0
 xlrd==2.0.2
 xlsxwriter==3.3.0
+pypdfium2==5.14.0

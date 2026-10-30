@@ -1,8 +1,9 @@
 """Roles of managed services; external providers keep their own addresses."""
-WEB_PORT = 8765
-GATEWAY_PORT = 11436
-CHAT_PORT = 11437
-EMBED_PORT = 11438
+import os
+WEB_PORT = int(os.environ.get("LOCAL_AI_WEB_PORT", 8765))
+GATEWAY_PORT = int(os.environ.get("LOCAL_AI_GATEWAY_PORT", 11436))
+CHAT_PORT = int(os.environ.get("LOCAL_AI_CHAT_PORT", 11437))
+EMBED_PORT = int(os.environ.get("LOCAL_AI_EMBED_PORT", 11438))
 LOOPBACK = "127.0.0.1"
 LOCAL_URL = f"http://{LOOPBACK}:{CHAT_PORT}"
 EMBED_URL = f"http://{LOOPBACK}:{EMBED_PORT}"

@@ -167,8 +167,8 @@ class OptimizationTests(unittest.TestCase):
 
     def test_tool_result_budget_and_cleanup_references(self):
         original = {"text": "虚构结果" * 10000}
-        wire, clipped = context.fit_tool_result(original, [{"role": "user", "content": "test"}], 8192, 2048)
-        self.assertTrue(clipped); self.assertIn("完整记录", wire)
+        with self.assertRaisesRegex(ValueError, "当前回合已终止"):
+            context.fit_tool_result(original, [{"role": "user", "content": "test"}], 8192, 2048)
         self.assertEqual(len(original["text"]), 40000)
         meta = attachments.upload("orphan-synthetic.txt", b"Synthetic orphan")
         attachments.extract(meta["id"])

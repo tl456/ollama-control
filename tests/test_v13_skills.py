@@ -35,23 +35,23 @@ class SkillTests(unittest.TestCase):
     def test_skill_discovery_and_short_on_demand_rules(self):
         listing = skills.listing()
         self.assertEqual(listing["max_selected"], 2)
-        item = next(v for v in listing["items"] if v["id"] == "stiffness-excel")
+        item = next(v for v in listing["items"] if v["id"] == "evidence-summary")
         self.assertNotIn("instructions", item)
         self.assertEqual(skills.injection({}), "")
         loaded = skills.injection({"skill_ids": [item["id"]]})
-        self.assertIn("不假设所有 DAT 同格式", loaded)
-        self.assertIn("不能判耐久结论", loaded)
+        self.assertIn("不要编造缺失数据", loaded)
+        self.assertIn("待确认", loaded)
         self.assertLess(context.estimate(loaded), 1800)
         self.assertEqual(item["requires_tools"], ["read_attachment", "python_run"])
 
     def test_skill_snapshot_immutable_and_integrity_checked(self):
-        snapshot = skills.snapshot(["stiffness-excel"])
+        snapshot = skills.snapshot(["evidence-summary"])
         with patch.object(skills, "_read", side_effect=ValueError("changed")):
             self.assertIn("自主", skills.injection({"skill_snapshot": snapshot}))
         snapshot[0]["instructions"] += "变更"
         with self.assertRaisesRegex(ValueError, "快照"):
             skills.injection({"skill_snapshot": snapshot})
-        for ids in (["stiffness-excel"] * 2, ["missing"], "stiffness-excel", ["../secret"]):
+        for ids in (["evidence-summary"] * 2, ["missing"], "evidence-summary", ["../secret"]):
             with self.assertRaises(ValueError):
                 skills.snapshot(ids)
 
@@ -61,7 +61,7 @@ class SkillTests(unittest.TestCase):
         store.append(conv, "user", "整理", attachments=[attachments.snapshot(meta["id"])])
         before = context.history(conv, False)
         self.assertFalse(any("已选择技能" in m["content"] for m in before))
-        conv["options"]["skill_ids"] = ["stiffness-excel"]
+        conv["options"]["skill_ids"] = ["evidence-summary"]
         after = context.history(conv, False)
         self.assertTrue(any("已选择技能" in m["content"] for m in after))
         self.assertIn(meta["id"], after[-1]["content"])
@@ -224,7 +224,7 @@ print('ROUNDTRIP_OK')'''
             attachments.archive_entries(Directory([item]))
 
     def test_native_skill_rounds_bounded_and_no_implicit_python(self):
-        write_json(ROOT / "config/settings.json", {**DEFAULTS, "memory_enabled": False})
+        write_json(ROOT / "config/settings.json", {**DEFAULTS, "memory_enabled": False, "context": 65536})
         async def fake_stream(provider, body, stop):
             if body.get("tools"):
                 yield {"message": {"tool_calls": [{"function": {"name": "system_time", "arguments": {}}}]}, "done": True}
@@ -240,9 +240,9 @@ print('ROUNDTRIP_OK')'''
             self.assertNotIn("python_run", conv["options"]["tools"])
             return events
         ordinary = asyncio.run(run([]))
-        skilled = asyncio.run(run(["stiffness-excel"]))
-        self.assertEqual(sum(v["type"] == "tool" for v in ordinary), 4)
-        self.assertEqual(sum(v["type"] == "tool" for v in skilled), 6)
+        skilled = asyncio.run(run(["evidence-summary"]))
+        self.assertEqual(sum(v["type"] == "tool" for v in ordinary), 50)
+        self.assertEqual(sum(v["type"] == "tool" for v in skilled), 50)
         self.assertTrue(any(v["type"] == "phase" and "已装载技能" in v["text"] for v in skilled))
 
 

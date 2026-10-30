@@ -34,10 +34,11 @@ def alive():
         return False
 
 
-def launch_window(mode="auto", tray=None):
+def launch_window(mode=None, tray=None):
     from app.config import settings
     cfg = settings()
-    if mode == "auto":
+    mode = mode or cfg.get("launch_mode", "app")
+    if mode == "webview2":
         try:
             import webview
             window = webview.create_window("本地智能工作台", URL, width=1280, height=850, min_size=(920, 640), background_color="#0e131a", text_select=True)
@@ -48,7 +49,8 @@ def launch_window(mode="auto", tray=None):
             return "webview2"
         except Exception:
             logging.exception("WebView2 unavailable; falling back to application mode")
-    if mode in ("auto", "app"):
+            mode = "app"
+    if mode == "app":
         candidates = [
             Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")) / "Microsoft/Edge/Application/msedge.exe",
             Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")) / "Microsoft/Edge/Application/msedge.exe",
@@ -66,14 +68,14 @@ def launch_window(mode="auto", tray=None):
 def main():
     if len(sys.argv) > 2 and sys.argv[1] == "--worker":
         kind = sys.argv[2]
-        if kind not in ("doc", "plugin", "selftest"):
+        if kind not in ("doc", "plugin", "selftest", "office"):
             raise ValueError("Unknown worker")
         sys.argv = ["app." + kind + "_worker", *sys.argv[3:]]
         runpy.run_module("app." + kind + "_worker", run_name="__main__")
         return
     parser = argparse.ArgumentParser()
     parser.add_argument("--serve", action="store_true")
-    parser.add_argument("--browser", choices=("auto", "app", "default"), default="auto")
+    parser.add_argument("--browser", choices=("app", "webview2", "default"), default=None)
     parser.add_argument("--port", type=int, default=WEB_PORT)
     parser.add_argument("--tray", action="store_true", help="Start in tray without opening a window")
     args = parser.parse_args()
@@ -94,13 +96,26 @@ def main():
         initialize_version()
         import uvicorn
         import psutil
+        from app import port_manager
+        sock, args.port = port_manager.bind_available("web", settings()["web_bind"], args.port)
+        URL = "http://127.0.0.1:" + str(args.port)
+        if settings().get("ollama_management", "managed") == "managed":
+            port_manager.prepare_managed()
         write_json(ROOT / "cache/server.json", {"pid": os.getpid(), "url": URL, "created": psutil.Process().create_time(), "exe": psutil.Process().exe()})
         from app.server import app
         server = uvicorn.Server(uvicorn.Config(app, host=settings()["web_bind"], port=args.port, log_config=None, access_log=False))
         app.state.shutdown_callback = lambda: setattr(server, "should_exit", True)
-        server.run()
+        server.run(sockets=[sock])
         return
     from app.tray import Tray, acquire_singleton, notify_existing
+    from app.config import read_json
+    previous = read_json(ROOT / "cache/server.json", {})
+    previous_url = previous.get("url", "")
+    if previous_url.startswith("http://127.0.0.1:"):
+        candidate = URL
+        URL = previous_url
+        if not alive():
+            URL = candidate
     mutex, first = acquire_singleton()
     if not first:
         notify_existing(URL)
@@ -114,6 +129,9 @@ def main():
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         capture_process_log(owned_server, ROOT / "logs/server.log")
         for _ in range(80):
+            record = read_json(ROOT / "cache/server.json", {})
+            if record.get("pid") == owned_server.pid:
+                URL = record["url"]
             if alive():
                 break
             time.sleep(0.2)
@@ -148,7 +166,7 @@ def main():
             except (KeyError, psutil.Error):
                 logging.exception("UI server ownership not confirmed; left running")
     try:
-        tray = Tray(URL, lambda: launch_window("app" if args.browser == "auto" else args.browser), exit_owned).start()
+        tray = Tray(URL, lambda: launch_window(args.browser), exit_owned).start()
     except Exception:
         logging.exception("Tray unavailable; opening UI normally")
         launch_window(args.browser)

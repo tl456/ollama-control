@@ -1,0 +1,84 @@
+{
+  "id": "cad_reader",
+  "name": "CAD 只读信息读取器",
+  "version": "1.6.0",
+  "api_version": 1,
+  "entrypoint": "tool.py",
+  "description": "使用已安装的官方CAXA信息提取COM或NX Open独立批处理读取DWG/EXB/PRT/STEP基本信息。先probe检查后端，再inspect传完整路径；不修改原件，不操作用户已打开CAD。接口没有取得的数据返回未取得，不能根据文件名猜测。",
+  "permissions": [
+    "file.read",
+    "cad.api"
+  ],
+  "timeout": 150,
+  "capability_labels": [
+    "只读CAD信息",
+    "需要本机CAD接口与许可"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "probe",
+          "inspect"
+        ]
+      },
+      "path": {
+        "type": "string",
+        "description": "inspect必填：实际文件完整路径"
+      },
+      "backend": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "caxa",
+          "nx"
+        ],
+        "default": "auto"
+      },
+      "page": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      }
+    },
+    "required": [
+      "action"
+    ],
+    "additionalProperties": false
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "nx_directory": {
+        "type": "string",
+        "default": "",
+        "title": "NX安装目录",
+        "description": "为空时从UGII_BASE_DIR及Program Files/Siemens中探测；目录应含NXBIN/run_journal.exe。"
+      },
+      "timeout_seconds": {
+        "type": "integer",
+        "default": 120,
+        "minimum": 5,
+        "maximum": 120,
+        "title": "CAD读取超时（秒）"
+      },
+      "page_size": {
+        "type": "integer",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 100,
+        "title": "每页条目数"
+      },
+      "max_file_mb": {
+        "type": "integer",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 512,
+        "title": "单个文件上限 MiB"
+      }
+    },
+    "additionalProperties": false
+  }
+}

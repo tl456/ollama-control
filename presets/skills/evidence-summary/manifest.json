@@ -1,0 +1,10 @@
+{
+  "id": "evidence-summary",
+  "name": "资料核对与结果整理",
+  "version": "1.0",
+  "description": "通用示例：读取资料、核对依据、整理结果；可复制、编辑和导出学习。",
+  "requires_tools": [
+    "read_attachment",
+    "python_run"
+  ]
+}

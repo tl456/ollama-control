@@ -19,15 +19,15 @@ hidden = ["app.server", "app.doc_worker", "app.plugin_worker", "app.selftest_wor
           "app.network", "app.jobs", "app.memory", "app.knowledge", "app.resources", "app.turn_queue", "app.skills",
           "uvicorn.logging", "uvicorn.loops.auto", "uvicorn.protocols.http.auto",
           "uvicorn.protocols.http.h11_impl", "uvicorn.protocols.websockets.auto",
-          "uvicorn.lifespan.on", "win32crypt", "win32com.client", "pythoncom", "tkinter", "tkinter.filedialog"]
-for package in ("rapidocr_onnxruntime", "webview", "onnxruntime", "docx", "openpyxl", "pptx", "xlrd", "pystray", "tokenizers"):
+          "uvicorn.lifespan.on", "win32crypt", "win32com.client", "pythoncom", "win32job", "win32event", "win32process", "tkinter", "tkinter.filedialog"]
+for package in ("rapidocr_onnxruntime", "webview", "onnxruntime", "docx", "openpyxl", "pptx", "xlrd", "pystray", "tokenizers", "pypdfium2", "pypdfium2_raw"):
     found_data, found_binaries, found_hidden = collect_all(package)
     # Package collectors can add entire dist-info directories. Handle metadata
     # below so canonical licenses and local-origin exclusions apply uniformly.
     data += [(source, target) for source, target in found_data if not any(part.endswith((".dist-info", ".egg-info")) for part in (*Path(source).parts, *Path(target).parts))]
     binaries += found_binaries
     hidden += found_hidden
-hidden += collect_submodules("uvicorn") + collect_submodules("app.api") + collect_submodules("app.toolkit") + ["app.upgrades", "app.rag_query", "app.rag_chunks", "app.kb_documents", "app.downloads", "app.service_config"]
+hidden += collect_submodules("uvicorn") + collect_submodules("app.api") + collect_submodules("app.toolkit") + ["app.upgrades", "app.rag_query", "app.rag_chunks", "app.kb_documents", "app.downloads", "app.service_config", "app.office_worker", "app.office_operations", "app.port_manager"]
 locked = []
 for line in (project / "requirements-lock.txt").read_text(encoding="utf-8").splitlines():
     if line.strip() and not line.lstrip().startswith("#"):

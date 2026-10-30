@@ -307,17 +307,15 @@ async def apply_gateway(background):
     if cfg["gateway_require_key"] and not auth_config().get("gateway_key"):
         GATEWAY["error"] = "请先生成 API Key，再启用共享入口"
         return
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    from .port_manager import bind_available
     try:
-        sock.bind((cfg["gateway_bind"], cfg["gateway_port"]))
-        sock.listen(64)
-        sock.setblocking(False)
-    except OSError:
-        sock.close()
-        GATEWAY["error"] = "共享端口被占用或无法监听，请更换端口后重试"
+        sock, actual_port = bind_available("gateway", cfg["gateway_bind"], cfg["gateway_port"])
+    except (OSError, ValueError) as error:
+        GATEWAY["error"] = str(error)
         return
     import uvicorn
-    server = uvicorn.Server(uvicorn.Config(gateway, host=cfg["gateway_bind"], port=cfg["gateway_port"], log_config=None, access_log=False))
+    GATEWAY["port"] = actual_port
+    server = uvicorn.Server(uvicorn.Config(gateway, host=cfg["gateway_bind"], port=actual_port, log_config=None, access_log=False))
     async def serve():
         try:
             GATEWAY["running"] = True

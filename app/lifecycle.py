@@ -98,7 +98,8 @@ def reset_managed(reason="manual"):
     with store.LOCK:
         # All paths are application-owned; never use configured filesystem roots.
         folders = [(ROOT / "data" / name, ROOT / "data") for name in
-                   ("attachments", "exports", "python_runs", "backups", "trash", "memory", "knowledge")]
+                   ("attachments", "exports", "python_runs", "backups", "trash", "memory", "knowledge", "skills", "snapshots")]
+        folders += [(ROOT / "cache/office-previews", ROOT / "cache")]
         folders += [(ROOT / "plugins/imported", ROOT / "plugins"), (ROOT / "config/tools", ROOT / "config")]
         files = [(ROOT / "data" / name, ROOT / "data") for name in ("access.db", "access.db-wal", "access.db-shm")]
         files += [(ROOT / "config" / name, ROOT / "config") for name in
@@ -149,6 +150,8 @@ def initialize_version(policy=None):
 
 def cleanup():
     from . import store
+    from . import audit
+    audit.cleanup()
     cfg = settings()
     if not cfg["cleanup_enabled"]:
         return {"removed": 0, "enabled": False}

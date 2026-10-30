@@ -1,0 +1,45 @@
+{
+  "id": "ask_user",
+  "name": "询问用户",
+  "version": "1.6.0",
+  "exportable": false,
+  "description": "需要用户补充信息或选择时，提出一个清楚的问题并等待回答，然后继续本轮任务。可以给出最多6个选项，用户也能自由输入或跳过。",
+  "permissions": [
+    "等待用户回答"
+  ],
+  "capabilities": [
+    "interaction"
+  ],
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "options": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "maxItems": 6,
+        "default": []
+      }
+    },
+    "required": [
+      "question"
+    ],
+    "additionalProperties": false
+  },
+  "example": {
+    "question": "图片应插入哪一页？",
+    "options": [
+      "第1页",
+      "第2页"
+    ]
+  },
+  "cacheable": false
+}

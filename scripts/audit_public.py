@@ -19,7 +19,7 @@ SOURCE_FILES = {"main.py", "README.md", "LICENSE", "requirements.txt", "requirem
                 "requirements-lock.txt", "启动.bat", "浏览器启动.bat", ".gitignore", ".gitattributes",
                 "SECURITY.md", "PRIVACY.md", "DISCLAIMER.md", "CONTRIBUTING.md", "CHANGELOG.md",
                 "THIRD_PARTY_NOTICES.md"}
-PRIVATE_PARTS = {"config", "data", "models", "runtime", "logs", "cache", "imported", ".venv", "venv",
+PRIVATE_PARTS = {"config", "data", "models", "runtime", "logs", "audit", "cache", "imported", ".venv", "venv",
                  "dist", "build", "release", "__pycache__", ".git"}
 TEXT_SUFFIXES = {".py", ".js", ".mjs", ".cjs", ".json", ".md", ".txt", ".html", ".css", ".svg",
                  ".bat", ".ps1", ".iss", ".spec", ".yml", ".yaml", ".toml", ".xml"}

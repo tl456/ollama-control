@@ -1,0 +1,114 @@
+{
+  "id": "http_request",
+  "version": "1.6.0",
+  "timeout": 130,
+  "name": "网络请求",
+  "description": "访问HTTP/HTTPS网页或本机/局域网API。支持方法、请求头、JSON、正文及下载。不自动重试写请求。只返回有界正文，不返回凭据头。",
+  "permissions": [
+    "会向目标地址发送请求",
+    "下载时会创建文件"
+  ],
+  "capabilities": [
+    "network",
+    "create"
+  ],
+  "example": {
+    "url": "http://127.0.0.1:11436/api/tags",
+    "method": "GET"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "maxLength": 8192
+      },
+      "method": {
+        "type": "string",
+        "enum": [
+          "GET",
+          "HEAD",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "OPTIONS"
+        ],
+        "default": "GET"
+      },
+      "headers": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "maxProperties": 30
+      },
+      "json": {},
+      "body": {
+        "type": "string",
+        "maxLength": 1000000
+      },
+      "extract_text": {
+        "type": "boolean",
+        "default": true
+      },
+      "max_chars": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 60000
+      },
+      "save_directory": {
+        "type": "string"
+      },
+      "save_name": {
+        "type": "string",
+        "maxLength": 150
+      }
+    },
+    "required": [
+      "url"
+    ],
+    "additionalProperties": false
+  },
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "timeout": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 120,
+        "default": 30,
+        "title": "请求超时 · 秒"
+      },
+      "max_response_mb": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 10,
+        "title": "最大响应 · MiB"
+      },
+      "proxy_mode": {
+        "type": "string",
+        "enum": [
+          "system",
+          "none"
+        ],
+        "default": "system",
+        "title": "代理方式"
+      },
+      "credential_host": {
+        "type": "string",
+        "default": "",
+        "title": "凭据适用主机"
+      },
+      "bearer_token": {
+        "type": "string",
+        "default": "",
+        "format": "password",
+        "title": "可选 Bearer 凭据"
+      }
+    },
+    "additionalProperties": false
+  },
+  "cacheable": false
+}

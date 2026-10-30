@@ -26,7 +26,7 @@ MAX_GLOBAL = 64
 MAX_EVENTS = 128
 MAX_EVENT_CHARS = 262144
 MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024
-GENERATION_KEYS = ("output_tokens", "system_prompt", "compression_trigger", "recent_ratio", "attachment_ratio", "rag_query_enabled", "rag_query_prompt")
+GENERATION_KEYS = ("output_tokens", "system_prompt", "compression_trigger", "recent_ratio", "attachment_ratio", "rag_query_enabled", "rag_query_prompt", "max_tool_calls")
 
 OPTION_KEYS = {"model", "provider", "context", "tool_mode", "tools", "think", "analysis_mode", "context_policy",
                "sampling_mode", "temperature", "top_p", "top_k", "min_p", "repeat_penalty", "presence_penalty", "seed",
@@ -63,8 +63,8 @@ def options(base, patch=None):
         value["context"] = int(value["context"])
     except (TypeError, ValueError, OverflowError) as error:
         raise ValueError("上下文需要有效的整数容量") from error
-    if not 2048 <= value["context"] <= 262144:
-        raise ValueError("上下文须在 2K 至 256K 之间")
+    if not 2048 <= value["context"] <= 2147483647:
+        raise ValueError("上下文须为不小于 2K 的有效整数 Token 数")
     if value.get("rag_mode", "original") not in ("original", "call"):
         raise ValueError("知识库检索方式无效")
     if value.get("context_policy") not in ("summary", "truncate", "manual"):
@@ -263,7 +263,7 @@ async def _snapshot(conv, body, remote, can_manage=None):
     opts = options(conv["options"], option_patch)
     restricted = bool(remote and not can_manage)
     if restricted:
-        opts.update(tools=[name for name in opts["tools"] if name == "system_time"], skill_ids=[], skill_snapshot=[])
+        opts.update(tools=[name for name in opts["tools"] if name in ("system_time", "ask_user")], skill_ids=[], skill_snapshot=[])
     if opts["provider"] != "local" and body.get("cloud_confirmed") is not True:
         raise ValueError("此连接会发送消息、附件、记忆和知识片段到其他主机，请先确认数据去向")
     value = {"content": content, "attachment_snapshots": snapshots, "options": opts,
@@ -389,6 +389,11 @@ def recover():
             value = _decode(row)
             if value["status"] == "running":
                 value.update(status="interrupted", error="上次程序退出中断此轮，未自动重发；请检查历史后重新发送", ended=time.time())
+                if value.get("user_question", {}).get("status") == "pending":
+                    value["user_question"].update(status="skipped", answer="")
+                for item in value.get("steering", []):
+                    if item.get("status") == "pending":
+                        item["status"] = "not_applied"
             else:
                 value.update(status="paused", paused_reason="软件重新启动，待发任务未自动重放；请检查后明确继续")
             _write(db, value)
@@ -450,7 +455,9 @@ async def _execute(value):
         job["stop"] = stop
         value["job_id"] = job["id"]
         with store.LOCK, store.connect() as db:
-            _write(db, value)
+            current = _decode(db.execute("SELECT * FROM chat_turns WHERE id=?", (ident,)).fetchone())
+            current["job_id"] = job["id"]
+            value = _write(db, current)
         emit(ident, {"type": "turn_state", "turn": public(value)})
         acquire_task = asyncio.create_task(jobs.acquire(job))
         while not acquire_task.done():
@@ -472,14 +479,10 @@ async def _execute(value):
             if not caps_task.done():
                 caps_task.cancel()
                 await asyncio.gather(caps_task, return_exceptions=True)
-        if opts["context"] > caps["max_context"]:
-            raise ValueError("上下文设置超过模型声明上限")
         if caps.get("embedding"):
             raise ValueError("这是嵌入模型，请在知识库中使用，不用于聊天")
         if opts.get("rag_enabled") and not opts.get("rag_ids"):
             raise ValueError("已启用知识库，请至少选择一个库")
-        if opts.get("rag_enabled") and opts.get("rag_mode") == "call" and (not caps["tools"] or opts["tool_mode"] == "legacy"):
-            raise ValueError("现代 RAG 需要支持原生工具的模型，并选择自动或原生协议")
         conv = store.get(conversation)
         if conv.get("deleted"):
             raise ValueError("对话已经移入回收站")
@@ -487,7 +490,7 @@ async def _execute(value):
             conv.pop("context_state", None)
         restricted = value.get("restricted", value["remote"]) or (value["remote"] and
             not settings().get("remote_full_access", False))
-        conv.update(options=copy.deepcopy(opts), _remote_request=value["remote"], _restricted_request=bool(restricted), _turn_snapshot=True, _job_id=job["id"],
+        conv.update(options=copy.deepcopy(opts), _remote_request=value["remote"], _restricted_request=bool(restricted), _turn_snapshot=True, _job_id=job["id"], _turn_id=ident,
                     pending_job={"id": job["id"], "status": "running", "turn_id": ident})
         if not value.get("reuse_user"):
             user = store.append(conv, "user", value["content"], attachments=copy.deepcopy(value["attachment_snapshots"]), turn_id=ident)
@@ -511,7 +514,9 @@ async def _execute(value):
                 message["turn_id"] = ident
                 store.put(conv)
                 with store.LOCK, store.connect() as db:
-                    _write(db, value)
+                    current = _decode(db.execute("SELECT * FROM chat_turns WHERE id=?", (ident,)).fetchone())
+                    current.update({key: value[key] for key in ("message_id", "user_message_id", "job_id") if key in value})
+                    value = _write(db, current)
             if packet["type"] == "error":
                 outcome, failure = "failed", packet.get("message", "本轮执行失败")
             if packet["type"] == "done":
@@ -545,10 +550,17 @@ async def _execute(value):
             store.put(conv)
         chat.ACTIVE.pop(conversation, None)
         STOPS.pop(ident, None)
+        from . import user_interaction
+        user_interaction.finish_turn(ident)
         with store.LOCK, store.connect() as db:
             current = _decode(db.execute("SELECT * FROM chat_turns WHERE id=?", (ident,)).fetchone())
             current.update({key: value[key] for key in ("message_id", "user_message_id", "job_id") if key in value})
             current.update(status=outcome, ended=time.time(), error=failure)
+            if current.get("user_question", {}).get("status") == "pending":
+                current["user_question"].update(status="skipped", answer="")
+            for item in current.get("steering", []):
+                if item.get("status") == "pending":
+                    item["status"] = "not_applied"
             # Raw text snapshots are only necessary while awaiting execution.
             current["attachment_snapshots"] = [{**a, "text": ""} for a in current.get("attachment_snapshots", [])]
             _write(db, current)

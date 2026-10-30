@@ -241,6 +241,7 @@ class RuntimeV15Tests(unittest.TestCase):
         executable = str(ROOT / "runtime/SYNTHETIC-ollama.exe")
         for embedding, device, port in ((False, "auto", 11437), (False, "cpu", 11437), (True, "cpu", 11438), (True, "gpu", 11438)):
             with patch.object(providers, "ollama_exe", return_value=executable), \
+                 patch("app.port_manager.ensure_role", return_value=port), \
                  patch.object(providers.httpx, "get", side_effect=httpx.ConnectError("synthetic unavailable")), \
                  patch.object(providers.subprocess, "Popen", return_value=SimpleNamespace(pid=24680)) as popen, \
                  patch.object(providers.psutil, "Process", return_value=Mock(create_time=Mock(return_value=100))), \
